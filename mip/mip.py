@@ -29,9 +29,9 @@ parser.add_argument('--platform', type=str,
     choices=['codex'], default='codex',
     help='Which platform produced the input images.')
 
-###########################
+###############################
 ## generate-spatial-features ##
-###########################
+###############################
 parser.add_argument('--label-image', type=str,
     help='Filepath of labeled cell segmentation tif.')
 
