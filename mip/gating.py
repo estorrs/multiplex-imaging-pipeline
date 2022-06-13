@@ -27,9 +27,9 @@ def convert_sparse(X):
     return X
 
 
-def gate_region(adata, channel, channel_img, boundary_img, x_col='centroid_col', y_col='centroid_row',
-        radius=200, cell_type=None, cell_type_col='cell_type_macro', top_idx=1, default_value=None,
-        use_raw=True):
+def get_ideal_window(adata, x_col='centroid_col', y_col='centroid_row',
+        radius=200, cell_type=None, cell_type_col='cell_type',
+	top_idx=1, return_filtered=True):
     if cell_type is not None and isinstance(cell_type, str):
         filtered = adata[adata.obs[cell_type_col]==cell_type]
     elif cell_type is not None:
@@ -50,6 +50,19 @@ def gate_region(adata, channel, channel_img, boundary_img, x_col='centroid_col',
 
     filtered = filtered[((filtered.obs[y_col]>r1)&(filtered.obs[y_col]<r2))]
     filtered = filtered[((filtered.obs[x_col]>c1)&(filtered.obs[x_col]<c2))]
+
+    if return_filtered:
+        return filtered, (r1, r2, c1, c2)
+    return r1, r2, c1, c2
+
+
+def gate_region(adata, channel, channel_img, boundary_img, x_col='centroid_col', y_col='centroid_row',
+        radius=200, cell_type=None, cell_type_col='cell_type_macro', top_idx=1, default_value=None,
+        use_raw=True):
+    filtered, (r1, r2, c1, c2) = get_ideal_window(
+        adata, x_col=x_col, y_col=y_col,
+        radius=radius, cell_type=cell_type, cell_type_col=cell_type_col,
+	top_idx=top_idx, return_filtered=True)
 
     df = filtered.obs[[y_col, x_col]].copy()
     if use_raw:
