@@ -116,7 +116,8 @@ def gate_region(adata, channel, channel_img, boundary_img, x_col='centroid_col',
 
     show(layout)
     
-    return r1, r2, c1, c2
+    return ((r1, r2, c1, c2),
+            (r1 / channel_img.shape[0], r2 / channel_img.shape[0], c1 / channel_img.shape[1], c2 / channel_img.shape[1]))
 
 
 
