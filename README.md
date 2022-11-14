@@ -13,10 +13,18 @@ conda create -f .env
 
 #### Create ome.tiff
 
+###### Create from a folder of stitched .tif files (old CODEX)
+
 Takes as input a directory containing stitched .tif images and creates and HTAN consortium compatible ome.tiff
 
 ```bash
 mip make-ome --tif-directory </path/to/directory/with/tiffs/*.tif> --output-filepath </path/to/output.ome.tiff>
+```
+
+###### Create from a .qptiff file (new CODEX)
+
+```bash
+mip make-ome --input-tif </path/to/directory/with/qptiff/*.qptiff> --output-filepath </path/to/output.ome.tiff>
 ```
 
 #### Create cell feature table
