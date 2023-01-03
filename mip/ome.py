@@ -34,6 +34,9 @@ def parse_codex_channel_name_from_raw(c):
         return None
     return c
 
+def identity(c):
+    return c
+
 
 def generate_ome_from_tifs(fps, output_fp, platform='codex'):
     """
@@ -45,6 +48,8 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex'):
 
     if platform == 'codex':
         mapping = parse_codex_channel_name_from_raw
+    elif platform == 'raw':
+        mapping = identity
     else:
         raise RuntimeError(f'The platform {platform} is not a valid platform')
 

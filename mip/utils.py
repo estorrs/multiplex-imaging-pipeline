@@ -27,16 +27,17 @@ def extract_ome_tiff(fp, channels=None):
     d = {}
     img_channels = []
     for c, p in zip(im.pixels.channels, tif.pages):
-        img = p.asarray()
         img_channels.append(c.name)
 
         if channels is None:
+            img = p.asarray()
             d[c.name] = img
         elif c.name in channels:
+            img = p.asarray()
             d[c.name] = img
-    
-    if len(channels) != len(d):
-        Raise RuntimeError(f'Not all channels were found in ome tiff: {channels} | {img_channels}')
+
+    if channels is not None and len(set(channels).intersection(set(img_channels))) != len(channels):
+        raise RuntimeError(f'Not all channels were found in ome tiff: {channels} | {img_channels}')
 
     return d
 

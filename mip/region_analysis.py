@@ -8,13 +8,14 @@ from pathlib import Path
 from collections import Counter
 
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
 import shapely
 import rasterio
 import tifffile
 
-from skimage.morphology import label, remove_small_objects, erosion, binary_dilation
+from skimage.morphology import label, remove_small_objects, erosion, binary_dilation, binary_erosion
 from skimage.measure import regionprops_table
 from skimage.segmentation import expand_labels
 from shapely import Polygon, Point, STRtree
@@ -22,6 +23,8 @@ from shapely.wkt import dumps
 from rasterio import features
 
 from mip.utils import extract_ome_tiff
+
+DEBUG_DIR = '/diskmnt/Projects/Users/estorrs/multiplex_data/analysis/dcis_region_analysis/angelo_v1'
 
 
 def compute_polsby_popper(area, perimeter):
@@ -39,23 +42,34 @@ def get_regionprops_df(labeled_img,
     return region_df
 
 
-def get_morphology_masks(labeled_img, boundary_dist=150):
+def get_morphology_masks(labeled_img, myoepi_dist=40, boundary_dist=150):
     mask = labeled_img > 0
+
+    # myoepithelial
+    outer_labeled = expand_labels(labeled_img, distance=myoepi_dist)
+    myoepi_labeled = np.zeros_like(labeled_img)
+    outer_mask = outer_labeled>0
+    myoepi_mask = outer_mask ^ mask
+    myoepi_labeled[myoepi_mask] = outer_labeled[myoepi_mask]
 
     # boundary
     outer_labeled = expand_labels(labeled_img, distance=boundary_dist)
-    boundary_labeled = np.zeros_like(outer_labeled)
+    boundary_labeled = np.zeros_like(labeled_img)
     outer_mask = outer_labeled>0
     boundary_mask = outer_mask ^ mask
     boundary_labeled[boundary_mask] = outer_labeled[boundary_mask]
 
     labeled_dict = {
         'region': labeled_img,
-        'boundary': boundary_labeled
+        'myoepi': myoepi_labeled,
+        'boundary': boundary_labeled,
+        'expanded': outer_labeled,
     }
     mask_dict = {
         'region': mask,
-        'boundary': boundary_mask
+        'myoepi': myoepi_mask,
+        'boundary': boundary_mask,
+        'expanded': outer_mask
     }
 
     return labeled_dict, mask_dict
@@ -68,13 +82,18 @@ def mask_to_polygon(mask):
 
 
 def generate_labeled_expansion_grid(
-        mask, inner_offset=20, parallel_step=50, perp_steps=5, expansion=80, grouping_dist=10):
+        mask, parallel_step=50, perp_steps=5, expansion=80, grouping_dist=10):
+
+    # plt.imshow(mask)
+    np.save(os.path.join(DEBUG_DIR, 'region_mask.npy'), mask)
+    # plt.show()
     ring = mask_to_polygon(mask).exterior
-    ring = ring.parallel_offset(inner_offset, side='left')
+
+
     perp_step = expansion // perp_steps
     rings = []
     for i in range(perp_steps):
-        new = ring.parallel_offset(perp_step * i, side='right')
+        new = ring.parallel_offset(perp_step * i, side='left')
         rings.append(new)
     rings[0] = ring # fails on offset of zero so replacing
     
@@ -87,21 +106,18 @@ def generate_labeled_expansion_grid(
         first_inner_pt, last_inner_pt, first_outer_pt, last_outer_pt = None, None, None, None
         for j in range(parallel_steps + 1):
             inner_pt1 = inner_ring.interpolate(j * parallel_step)
-            if j != parallel_steps:
-                inner_pt2 = inner_ring.interpolate((j + 1) * parallel_step)
-            else:
-                inner_pt2 = inner_ring.interpolate(inner_ring.length * .9999)
+            inner_pt2 = inner_ring.interpolate((j + 1) * parallel_step)
 
             inner_pts = [inner_ring.interpolate(x)
                          for x in range(j * parallel_step, (j + 1) * parallel_step, 1)]
-
-            if shapely.shortest_line(inner_pt1, outer_ring) is not None:
-                outer_pt1 = Point(shapely.shortest_line(inner_pt1, outer_ring).coords[1])
-                outer_pt2 = Point(shapely.shortest_line(inner_pt2, outer_ring).coords[1])
+            p1 = shapely.shortest_line(inner_pt1, outer_ring)
+            p2 = shapely.shortest_line(inner_pt2, outer_ring)
+            if p1 is not None and p2 is not None:
+                outer_pt1 = Point(p1.coords[1]) if j else outer_ring.interpolate(0.)
+                outer_pt2 = Point(p2.coords[1])
                 d1, d2 = outer_ring.project(outer_pt1), outer_ring.project(outer_pt2)
-
                 outer_pts = [outer_ring.interpolate(x)
-                             for x in range(int(d2), int(d1) - 1, -1)]
+                            for x in range(int(d2), int(d1) - 1, -1)]
 
                 poly_pts = inner_pts
                 poly_pts += outer_pts
@@ -112,14 +128,15 @@ def generate_labeled_expansion_grid(
                 if not j:
                     first_inner_pt = inner_pt1
                     first_outer_pt = outer_pt1
-                if j == parallel_steps:
+                elif j == parallel_steps:
                     last_inner_pt = inner_pt2
                     last_outer_pt = outer_pt2
 
         # close outer rings
         poly_pts = [last_inner_pt, last_outer_pt, first_outer_pt, first_inner_pt]
         if any([x is None for x in poly_pts]):
-            logging.info(f'arc {j} closing failed: {last_inner_pt} {last_outer_pt} {first_outer_pt} {first_inner_pt}')
+            logging.info(f'arc {j} closing failed: last inner - {last_inner_pt}, last outer - {last_outer_pt}, first outer - {first_outer_pt}, first inner - {first_inner_pt}')
+        else:
             poly_pts = [pt.coords[0] for pt in poly_pts]
             poly = Polygon(poly_pts)
             polys.append(poly)
@@ -143,40 +160,40 @@ def generate_labeled_expansion_grid(
     for i, poly in enumerate(polys):
         mask = rasterio.features.rasterize([poly], out_shape=mask.shape)
         labeled_grid[mask!=0] = i + 1
-    return labeled_grid, polys, groups, group_lines
+    return labeled_grid, polys, groups, group_lines, rings
 
 
 def generate_grid_props(region_id, labeled_dict, region_to_bbox,
-                        inner_offset=20, parallel_step=50, perp_steps=5,
+                        parallel_step=50, perp_steps=5,
                         expansion=80, grouping_dist=10):
     r1, c1, r2, c2 = region_to_bbox[region_id]
     mask = (labeled_dict['region'][r1:r2, c1:c2]==region_id).astype(np.int16)
-    labeled_grid, polys, groups, group_lines = generate_labeled_expansion_grid(
+    labeled_grid, polys, groups, group_lines, rings = generate_labeled_expansion_grid(
         mask, parallel_step=parallel_step, perp_steps=perp_steps,
         expansion=expansion, grouping_dist=grouping_dist
     )
 
-    return labeled_grid, polys, groups, group_lines
+    return labeled_grid, polys, groups, group_lines, rings
 
 
 def generate_grid_dict(region_to_bbox, labeled_dict,
-                       inner_offset=20, parallel_step=50, perp_steps=5,
+                       parallel_step=50, perp_steps=5,
                        expansion=80, grouping_dist=10):
     grid_dict = {}
     for region_id in region_to_bbox.keys():
         logging.info(f'Generating grid properties for region {region_id}')
-        labeled_grid, polys, groups, group_lines = generate_grid_props(
+        labeled_grid, polys, groups, group_lines, rings = generate_grid_props(
             region_id, labeled_dict, region_to_bbox,
-            inner_offset=inner_offset, parallel_step=parallel_step, perp_steps=perp_steps,
+            parallel_step=parallel_step, perp_steps=perp_steps,
             expansion=expansion, grouping_dist=grouping_dist
         )
         grid_dict[region_id] = {
             'labeled_grid': labeled_grid,
             'polys': polys,
             'groups': groups,
-            'group_lines': group_lines
+            'group_lines': group_lines,
+            'rings': rings
         }
-
     return grid_dict
 
 
@@ -199,7 +216,8 @@ def filter_polys(grid_dict, area_thresh=200, group_line_thresh=100):
             'polys': filtered_polys,
             'labeled_grid': filtered_labeled_grid,
             'group_lines': filtered_group_lines,
-            'groups': filtered_groups
+            'groups': filtered_groups,
+            'rings': d['rings']
         }
     return filtered_grid_dict
 
@@ -317,13 +335,13 @@ def add_cell_fractions(spatial_feats_df, props_dict, cell_type_col='cell_type'):
 
 
 def get_grid_metrics(labeled_dict, region_to_bbox, channel_to_img,
-                     inner_offset=20, parallel_step=50, perp_steps=5,
+                     parallel_step=50, perp_steps=5,
                      expansion=80, grouping_dist=10,
                      area_thresh=200, group_line_thresh=100,
                      channel_to_thresh={'SMA': 1500, 'Podoplanin': 5000}):
     logging.info('Genreating grid properties')
     grid_dict = generate_grid_dict(
-        region_to_bbox, labeled_dict, inner_offset=inner_offset,
+        region_to_bbox, labeled_dict,
         parallel_step=parallel_step, perp_steps=perp_steps, expansion=expansion,
         grouping_dist=grouping_dist)
     filtered_grid_dict = filter_polys(
@@ -343,8 +361,8 @@ def get_grid_metrics(labeled_dict, region_to_bbox, channel_to_img,
                 'channel_to_pos_grid': channel_to_pos_grid
             }
         except ZeroDivisionError:
-            logging.info('zero division error in region {region_id}')
-            logging.info('channel all dataframe shape: {channel_to_df.shape}')
+            logging.info(f'zero division error in region {region_id}')
+            logging.info(f'channel all dataframe shape: {channel_to_df.shape}')
 
     return region_to_results, grid_dict, filtered_grid_dict
 
@@ -413,10 +431,10 @@ def save_results(output_dir, metric_df, labeled_dict, mask_dict,
         to_save = {k:{
                         'polygons_filtered': {k:list(dumps(v))
                                             for k, v in filtered_grid_dict[k].items()
-                                            if k in ['polys', 'group_lines']},
+                                            if k in ['polys', 'group_lines', 'rings']},
                         'polygons_unfiltered': {k:list(dumps(v))
                                                 for k, v in grid_dict[k].items()
-                                                if k in ['polys', 'group_lines']},
+                                                if k in ['polys', 'group_lines', 'rings']},
                     } for k in region_ids}
         json.dump(to_save, open(os.path.join(output_dir, 'grid_polygons.json'), 'w'))
 
@@ -434,45 +452,70 @@ def save_results(output_dir, metric_df, labeled_dict, mask_dict,
 def generate_region_metrics(
         spatial_features_df, ome_fp, region_mask_fp, output_dir,
         y_col='centroid_row', x_col='centroid_col', cell_metadata_cols=('cell_type',),
-        boundary_dist=150, inner_offset=20, parallel_step=50, perp_steps=5,
+        boundary_dist=150, parallel_step=50, perp_steps=5,
         expansion=80, grouping_dist=10, area_thresh=200, group_line_thresh=100,
         channel_to_thresh={'SMA': 1500, 'Podoplanin': 5000}, min_region_size=None,
         max_region_size=None, calculate_grid_metrics=True):
     
-    region_mask = tifffile.imread(region_mask_fp) > 0
-    logging.info(f'Region mask loaded. Size: {region_mask.shape}')
+    initial_region_mask = tifffile.imread(region_mask_fp) > 0
+    logging.info(f'mask loaded. Size: {initial_region_mask.shape}')
+
+    logging.info('making morphology masks')
+    initial_labeled = label(initial_region_mask)
+    labeled_dict, mask_dict = get_morphology_masks(
+        initial_labeled, boundary_dist=boundary_dist, myoepi_dist=expansion)
+    region_labeled = labeled_dict['region'].copy()
+    region_mask = mask_dict['region'].copy()
+    initial_region_df = get_regionprops_df(region_labeled)
 
     if min_region_size is not None:
         logging.info('removing small regions')
         region_mask = remove_small_objects(region_mask, min_size=min_region_size)
+        region_labeled[~region_mask] = 0
 
-    labeled_img = label(region_mask)
-    region_df = get_regionprops_df(labeled_img)
+    region_df = get_regionprops_df(region_labeled)
     n_regions = region_df.shape[0]
     logging.info(f'Labeled region props generated. {n_regions} total regions.')
 
-    # allows for max size threshold, speeds up runs for debugging purposes
+    # # allows for max size threshold, speeds up runs for debugging purposes
     if max_region_size is not None:
         logging.info(f'filtering regions with area greater than {max_region_size}')
         remove = [l for l, area in zip(region_df.index, region_df['area'])
                   if area > max_region_size]
 
         for l in remove:
-            r1, c1, r2, c2 = region_df.loc[l, 'bbox-0'], region_df.loc[l, 'bbox-1'], region_df.loc[l, 'bbox-2'], region_df.loc[l, 'bbox-3']
-            cropped = labeled_img[r1:r2, c1:c2] # cropping is much faster
+            r1, c1, r2, c2 = (region_df.loc[l, 'bbox-0'], region_df.loc[l, 'bbox-1'],
+                              region_df.loc[l, 'bbox-2'], region_df.loc[l, 'bbox-3'])
+            cropped = region_labeled[r1:r2, c1:c2] # cropping is much faster
             new = cropped.copy()
             new[cropped==l] = 0
-            labeled_img[r1:r2, c1:c2] = new
-        reg_mask = labeled_img > 0
-        
-        # regenerate labeled image and region_df
-        labeled_img = label(reg_mask)
-        region_df = get_regionprops_df(labeled_img)
+            region_labeled[r1:r2, c1:c2] = new
+        region_mask = region_labeled > 0
+
+        # regenerate region_df
+        region_df = get_regionprops_df(region_labeled)
         n_regions = region_df.shape[0]
         logging.info(f'{n_regions} regions remaining after area filtering')
 
-    logging.info('making morphology masks')
-    labeled_dict, mask_dict = get_morphology_masks(labeled_img, boundary_dist=boundary_dist)
+    # resychronize masks and labeled imgs
+    logging.info('resynchronizing labeled masks')
+    region_ids = region_df.index.to_list()
+    previous_ids = initial_region_df.index.to_list()
+    to_remove = set(previous_ids) - set(region_ids)
+    for name, img in labeled_dict.items():
+        for l in to_remove:
+            r1, c1, r2, c2 = (initial_region_df.loc[l, 'bbox-0'], initial_region_df.loc[l, 'bbox-1'],
+                              initial_region_df.loc[l, 'bbox-2'], initial_region_df.loc[l, 'bbox-3'])
+            cropped = img[r1:r2, c1:c2] # cropping is much faster
+            new = cropped.copy()
+            new[cropped==l] = 0
+            img[r1:r2, c1:c2] = new
+        labeled_dict[name] = img
+        mask_dict[name] = img > 0
+    print('region ', np.unique(labeled_dict['region']))
+    print('myoepi ', np.unique(labeled_dict['myoepi']))
+    print('boundary', np.unique(labeled_dict['boundary']))
+
     props_dict = {}
     for name, img in labeled_dict.items():
         props_dict[name] = get_regionprops_df(
@@ -480,17 +523,17 @@ def generate_region_metrics(
 
     region_to_bbox = {l:(r1, c1, r2, c2)
                       for l, r1, c1, r2, c2 in zip(
-                          props_dict['boundary'].index,
-                          props_dict['boundary']['bbox-0'],
-                          props_dict['boundary']['bbox-1'],
-                          props_dict['boundary']['bbox-2'],
-                          props_dict['boundary']['bbox-3'])}
+                          props_dict['expanded'].index,
+                          props_dict['expanded']['bbox-0'],
+                          props_dict['expanded']['bbox-1'],
+                          props_dict['expanded']['bbox-2'],
+                          props_dict['expanded']['bbox-3'])}
 
     logging.info('extracting ome.tiff')
     channel_to_img = extract_ome_tiff(ome_fp, channels=list(channel_to_thresh.keys()))
     channels = list(channel_to_img.keys())
     logging.info(f'channels in ome.tiff: {channels}')
-    assert next(iter(channel_to_img.values())).shape == labeled_img.shape
+    assert next(iter(channel_to_img.values())).shape == labeled_dict['region'].shape
 
     for name, img in labeled_dict.items():
         spatial_features_df[f'{name}_region_id'] = [
@@ -519,7 +562,7 @@ def generate_region_metrics(
     logging.info('adding grid metrics')
     grid_metric_results, grid_dict, filtered_grid_dict = get_grid_metrics(
         labeled_dict, region_to_bbox, channel_to_img,
-        inner_offset=inner_offset, parallel_step=parallel_step, perp_steps=perp_steps,
+        parallel_step=parallel_step, perp_steps=perp_steps,
         expansion=expansion, grouping_dist=grouping_dist, area_thresh=area_thresh,
         group_line_thresh=group_line_thresh, channel_to_thresh=channel_to_thresh)
 

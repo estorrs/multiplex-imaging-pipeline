@@ -27,8 +27,8 @@ parser.add_argument('--output-filepath', type=str,
     help='Location to write ome.tiff file')
 
 parser.add_argument('--platform', type=str,
-    choices=['codex', 'phenocycler'], default='phenocycler',
-    help='Which platform produced the input images.')
+    choices=['codex', 'phenocycler', 'raw'], default='phenocycler',
+    help='Which platform produced the input images. Raw will stitch a directory of .tifs together without and channel name parsing.')
 
 ###############################
 ## generate-spatial-features ##
@@ -63,13 +63,16 @@ parser.add_argument('--output-dir', type=str, default='output',
 parser.add_argument('--boundary-dist', type=int, default=150,
     help='Distance (in pixels) to draw boundary around each region.')
 
-parser.add_argument('--inner-offset', type=int, default=20,
-    help='Distance (in pixels) inside region boundary to draw inner-most arc used in calculating grid metrics.')
+# parser.add_argument('--epithelial-offset', type=int, default=10,
+#     help='Distance (in pixels) outside region duct boundary to draw epithelial boundary')
+
+# parser.add_argument('--inner-offset', type=int, default=10,
+#     help='Distance (in pixels) inside region boundary to draw inner-most arc used in calculating grid metrics.')
 
 parser.add_argument('--perp-steps', type=int, default=10,
     help='Number of arcs to generate for region grid when drawing grid polygons.')
 
-parser.add_argument('--expansion', type=int, default=100,
+parser.add_argument('--expansion', type=int, default=40,
     help='Distance (in pixels) of innermost arc to outermost arc.')
 
 parser.add_argument('--parallel-step', type=int, default=50,
@@ -78,16 +81,16 @@ parser.add_argument('--parallel-step', type=int, default=50,
 parser.add_argument('--breakage-dist', type=int, default=10,
     help='Distance (in pixels) along innermost arc to use when drawing breakage lines.')
 
-parser.add_argument('--area_thresh', type=int, default=1000,
+parser.add_argument('--area_thresh', type=int, default=2000,
     help='Filter out grid polygons with area greater than area-thresh.')
 
 parser.add_argument('--breakage-line-thresh', type=int, default=100,
     help='Filter out grid polygons with area greater than area-thresh.')
 
-parser.add_argument('--min-region-size', type=int, default=10000,
+parser.add_argument('--min-region-size', type=int,
     help='Skip regions below --min-region-size when calculating metrics.')
 
-parser.add_argument('--max-region-size', type=int, default=None,
+parser.add_argument('--max-region-size', type=int,
     help='Skip regions over --max-region-size when calculating metrics. Helps speed up runs for debugging purposes since there are non-linear increases in runtime with region size.')
 
 parser.add_argument('--skip-grid-metrics', action='store_true',
@@ -98,7 +101,7 @@ args = parser.parse_args()
 
 
 def run_make_ome(input_tif, output_fp, platform='phenocycler'):
-    if platform == 'codex':
+    if platform in ['codex', 'raw']:
         fps = sorted(utils.listfiles(input_tif, regex=r'.tif[f]*$'))
         generate_ome_from_tifs(fps, output_fp, platform=platform)
     elif platform == 'phenocycler':
@@ -124,7 +127,7 @@ def run_generate_region_features():
     generate_region_metrics(
         df, args.ome_tiff, args.regions_mask, args.output_dir,
         y_col='y', x_col='x', cell_metadata_cols=metadata_cols,
-        boundary_dist=args.boundary_dist, inner_offset=args.inner_offset,
+        boundary_dist=args.boundary_dist,
         parallel_step=args.parallel_step, perp_steps=args.perp_steps,
         expansion=args.expansion, grouping_dist=args.breakage_dist,
         area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
