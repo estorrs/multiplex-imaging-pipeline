@@ -84,16 +84,23 @@ def mask_to_polygon(mask):
 def generate_labeled_expansion_grid(
         mask, parallel_step=50, perp_steps=5, expansion=80, grouping_dist=10):
 
-    # plt.imshow(mask)
-    np.save(os.path.join(DEBUG_DIR, 'region_mask.npy'), mask)
-    # plt.show()
+    # np.save(os.path.join(DEBUG_DIR, 'region_mask.npy'), mask)
     ring = mask_to_polygon(mask).exterior
+    
+    # test for left and right
+    left_ring = ring.parallel_offset(5, side='left')
+    right_ring = ring.parallel_offset(5, side='right')
+    if left_ring.length > right_ring.length:
+        side = 'left'
+    else:
+        side = 'right'
 
+    # logging.info(f'using {side} side to expand')
 
     perp_step = expansion // perp_steps
     rings = []
     for i in range(perp_steps):
-        new = ring.parallel_offset(perp_step * i, side='left')
+        new = ring.parallel_offset(perp_step * i, side=side)
         rings.append(new)
     rings[0] = ring # fails on offset of zero so replacing
     
@@ -158,8 +165,8 @@ def generate_labeled_expansion_grid(
 
     labeled_grid = np.zeros(mask.shape, dtype=np.int32)
     for i, poly in enumerate(polys):
-        mask = rasterio.features.rasterize([poly], out_shape=mask.shape)
-        labeled_grid[mask!=0] = i + 1
+        m = rasterio.features.rasterize([poly], out_shape=mask.shape)
+        labeled_grid[m!=0] = i + 1
     return labeled_grid, polys, groups, group_lines, rings
 
 
@@ -197,18 +204,37 @@ def generate_grid_dict(region_to_bbox, labeled_dict,
     return grid_dict
 
 
-def filter_polys(grid_dict, area_thresh=200, group_line_thresh=100):
+def has_valid_coords(poly, x_max, y_max):
+    xs, ys = poly.exterior.xy
+    xs, ys = np.asarray(xs), np.asarray(ys)
+
+    if not xs.max() > 0:
+        return False
+    if not ys.max() > 0:
+        return False
+    if not xs.min() < x_max:
+        return False
+    if not ys.min() < y_max:
+        return False
+
+    return True
+
+
+def filter_polys(grid_dict, region_to_bbox, area_thresh=200, group_line_thresh=100):
     filtered_grid_dict = {}
     for region_id, d in grid_dict.items():
-        remove_idxs = [i for i, p in enumerate(d['polys']) if p.area > area_thresh]
-        keep_idxs = [i for i, p in enumerate(d['polys']) if p.area <= area_thresh]
+        _, _, r2, c2 = region_to_bbox[region_id]
+        remove_idxs = [i for i, p in enumerate(d['polys'])
+                       if p.area > area_thresh]
+        pool = set(remove_idxs)
+        keep_idxs = [i for i in range(len(d['polys'])) if i not in pool]
         filtered_polys = [d['polys'][i] for i in keep_idxs]
 
         filtered_labeled_grid = d['labeled_grid'].copy()
         for i in remove_idxs:
             filtered_labeled_grid[d['labeled_grid']==i] = 0
 
-        idxs = [i for i, p in enumerate(d['group_lines']) if p.length <= group_line_thresh]
+        idxs = [i for i, p in enumerate(d['group_lines']) if p is not None and p.length <= group_line_thresh]
         filtered_group_lines = [d['group_lines'][i] for i in idxs]
         filtered_groups = [d['groups'][i] for i in idxs]
 
@@ -258,7 +284,7 @@ def get_thicknesses(labeled_grid, df, groups):
     return np.asarray(thicknesses)
 
 
-def generate_grid_metrics(region_id, labeled_dict, grid_dict, region_to_bbox, channel_to_img,
+def generate_grid_metrics(region_id, grid_dict, region_to_bbox, channel_to_img,
                        channel_to_thresh={'SMA': 1500, 'Podoplanin': 5000}):
     r1, c1, r2, c2 = region_to_bbox[region_id]
     d = grid_dict[region_id]
@@ -334,6 +360,45 @@ def add_cell_fractions(spatial_feats_df, props_dict, cell_type_col='cell_type'):
         props_dict[name] = pd.concat((df, frac_df), axis=1)
 
 
+def add_pixel_metrics(labeled_dict, props_dict, region_to_bbox, channel_to_img, channel_to_thresh):
+    channels = list(channel_to_thresh.keys())
+    grid = np.meshgrid(channels, channels)
+    tups = [tuple(sorted([x, y])) for x, y in zip(grid[0].flatten(), grid[1].flatten()) if x!=y]
+    combos = sorted(set(tups))
+
+    for name, df in props_dict.items():
+        img = labeled_dict[name]
+        data, cols = [], []
+        for region_id in df.index:
+            ls = []
+            metric_dict = {}
+            r1, c1, r2, c2 = region_to_bbox[region_id]
+            cropped = img[r1:r2, c1:c2]
+            m = cropped==region_id
+            channel_to_thresh_mask = {c:channel_to_img[c][r1:r2, c1:c2] >= t for c, t in channel_to_thresh.items()}
+            for k, v in channel_to_thresh_mask.items():
+                v[~m] = 0
+                channel_to_thresh_mask[k] = v
+            for channel in channels:
+                m1 = channel_to_thresh_mask[channel]
+                pos_fraction = np.count_nonzero(m1) / np.count_nonzero(m)
+                metric_dict[f'intensity_positive_fraction_{channel}'] = pos_fraction
+
+            for channel_1, channel_2 in combos:
+                m1 = channel_to_thresh_mask[channel_1]
+                m2 = channel_to_thresh_mask[channel_2]
+                both = (m1>0) & (m2>0)
+                pos_fraction = np.count_nonzero(both) / np.count_nonzero(m)
+                metric_dict[f'intensity_overlap_{channel_1}_{channel_2}'] = pos_fraction
+            
+            cols, ls = zip(*metric_dict.items())
+            data.append(ls)
+        new = pd.DataFrame(data=data, columns=cols, index=df.index)
+        df = pd.concat((df, new), axis=1)
+        props_dict[name] = df
+
+
+
 def get_grid_metrics(labeled_dict, region_to_bbox, channel_to_img,
                      parallel_step=50, perp_steps=5,
                      expansion=80, grouping_dist=10,
@@ -345,14 +410,15 @@ def get_grid_metrics(labeled_dict, region_to_bbox, channel_to_img,
         parallel_step=parallel_step, perp_steps=perp_steps, expansion=expansion,
         grouping_dist=grouping_dist)
     filtered_grid_dict = filter_polys(
-        grid_dict, area_thresh=area_thresh, group_line_thresh=group_line_thresh)
+        grid_dict, region_to_bbox,
+        area_thresh=area_thresh, group_line_thresh=group_line_thresh)
 
     logging.info('Calculating grid metrics')
     region_to_results = {}
     for region_id in filtered_grid_dict:
         try:
             channel_to_df, channel_to_props, channel_to_pos_grid = generate_grid_metrics(
-                region_id, labeled_dict, filtered_grid_dict, region_to_bbox, channel_to_img,
+                region_id, filtered_grid_dict, region_to_bbox, channel_to_img,
                 channel_to_thresh=channel_to_thresh
             )
             region_to_results[region_id] = {
@@ -448,14 +514,13 @@ def save_results(output_dir, metric_df, labeled_dict, mask_dict,
         json.dump(to_save, open(os.path.join(output_dir, 'other_metadata.json'), 'w'))
 
 
-
 def generate_region_metrics(
         spatial_features_df, ome_fp, region_mask_fp, output_dir,
         y_col='centroid_row', x_col='centroid_col', cell_metadata_cols=('cell_type',),
         boundary_dist=150, parallel_step=50, perp_steps=5,
         expansion=80, grouping_dist=10, area_thresh=200, group_line_thresh=100,
-        channel_to_thresh={'SMA': 1500, 'Podoplanin': 5000}, min_region_size=None,
-        max_region_size=None, calculate_grid_metrics=True):
+        channel_to_thresh_grid={'SMA': 1500}, channel_to_thresh_pixel={'SMA': 1500},
+        min_region_size=None, max_region_size=None, calculate_grid_metrics=True):
     
     initial_region_mask = tifffile.imread(region_mask_fp) > 0
     logging.info(f'mask loaded. Size: {initial_region_mask.shape}')
@@ -505,16 +570,13 @@ def generate_region_metrics(
     for name, img in labeled_dict.items():
         for l in to_remove:
             r1, c1, r2, c2 = (initial_region_df.loc[l, 'bbox-0'], initial_region_df.loc[l, 'bbox-1'],
-                              initial_region_df.loc[l, 'bbox-2'], initial_region_df.loc[l, 'bbox-3'])
+                            initial_region_df.loc[l, 'bbox-2'], initial_region_df.loc[l, 'bbox-3'])
             cropped = img[r1:r2, c1:c2] # cropping is much faster
             new = cropped.copy()
             new[cropped==l] = 0
             img[r1:r2, c1:c2] = new
         labeled_dict[name] = img
         mask_dict[name] = img > 0
-    print('region ', np.unique(labeled_dict['region']))
-    print('myoepi ', np.unique(labeled_dict['myoepi']))
-    print('boundary', np.unique(labeled_dict['boundary']))
 
     props_dict = {}
     for name, img in labeled_dict.items():
@@ -530,7 +592,9 @@ def generate_region_metrics(
                           props_dict['expanded']['bbox-3'])}
 
     logging.info('extracting ome.tiff')
-    channel_to_img = extract_ome_tiff(ome_fp, channels=list(channel_to_thresh.keys()))
+    total_channels = set(channel_to_thresh_grid.keys())
+    total_channels.update(set(channel_to_thresh_pixel.keys()))
+    channel_to_img = extract_ome_tiff(ome_fp, channels=list(total_channels))
     channels = list(channel_to_img.keys())
     logging.info(f'channels in ome.tiff: {channels}')
     assert next(iter(channel_to_img.values())).shape == labeled_dict['region'].shape
@@ -549,6 +613,9 @@ def generate_region_metrics(
     for col in cell_metadata_cols:
         add_cell_fractions(spatial_features_df, props_dict, cell_type_col=col)
 
+    logging.info('adding pixel level metrics')
+    add_pixel_metrics(labeled_dict, props_dict, region_to_bbox, channel_to_img, channel_to_thresh_pixel)
+
     if not calculate_grid_metrics: # stop early if we are not calculating grid metrics
         logging.info('skipping grid-based features')
         metric_df = combine_metrics(props_dict, None)
@@ -564,7 +631,7 @@ def generate_region_metrics(
         labeled_dict, region_to_bbox, channel_to_img,
         parallel_step=parallel_step, perp_steps=perp_steps,
         expansion=expansion, grouping_dist=grouping_dist, area_thresh=area_thresh,
-        group_line_thresh=group_line_thresh, channel_to_thresh=channel_to_thresh)
+        group_line_thresh=group_line_thresh, channel_to_thresh=channel_to_thresh_grid)
 
     logging.info('formatting metrics')
     metric_df = combine_metrics(props_dict, grid_metric_results)

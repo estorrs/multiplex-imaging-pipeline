@@ -54,8 +54,11 @@ parser.add_argument('--spatial-features', type=str,
 parser.add_argument('--regions-mask', type=str,
     help='Filepath of region mask that will be used when calculating metrics. Mask should be a .tif file and the same height and width as --ome-tiff.')
 
-parser.add_argument('--channel-thresholds', type=str,
+parser.add_argument('--channel-thresholds-grid', type=str,
     help='Filepath of tab-seperated .txt file where the first column is a channel name in the --ome-tiff and the second column is threshold values to use when determining positive grid polygons.')
+
+parser.add_argument('--channel-thresholds-pixel', type=str,
+    help='Filepath of tab-seperated .txt file where the first column is a channel name in the --ome-tiff and the second column is threshold values to use when determining positive pixels when generating region metrics.')
 
 parser.add_argument('--output-dir', type=str, default='output',
     help='Location to write generate-region-features output files.')
@@ -72,7 +75,7 @@ parser.add_argument('--boundary-dist', type=int, default=150,
 parser.add_argument('--perp-steps', type=int, default=10,
     help='Number of arcs to generate for region grid when drawing grid polygons.')
 
-parser.add_argument('--expansion', type=int, default=40,
+parser.add_argument('--expansion', type=int, default=50,
     help='Distance (in pixels) of innermost arc to outermost arc.')
 
 parser.add_argument('--parallel-step', type=int, default=50,
@@ -121,9 +124,12 @@ def run_generate_region_features():
     cols += metadata_cols
     df.columns = cols
 
-    channel_df = pd.read_csv(args.channel_thresholds, sep='\t')
-    channel_to_thresh = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
+    channel_df = pd.read_csv(args.channel_thresholds_grid, sep='\t')
+    channel_to_thresh_grid = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
 
+    channel_df = pd.read_csv(args.channel_thresholds_pixel, sep='\t')
+    channel_to_thresh_pixel = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
+ 
     generate_region_metrics(
         df, args.ome_tiff, args.regions_mask, args.output_dir,
         y_col='y', x_col='x', cell_metadata_cols=metadata_cols,
@@ -131,7 +137,8 @@ def run_generate_region_features():
         parallel_step=args.parallel_step, perp_steps=args.perp_steps,
         expansion=args.expansion, grouping_dist=args.breakage_dist,
         area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
-        channel_to_thresh=channel_to_thresh, min_region_size=args.min_region_size,
+        channel_to_thresh_grid=channel_to_thresh_grid, channel_to_thresh_pixel=channel_to_thresh_pixel,
+        min_region_size=args.min_region_size,
         max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
     )
 
