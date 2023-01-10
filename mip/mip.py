@@ -14,8 +14,17 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('mode', type=str,
-    choices=['make-ome', 'generate-spatial-features', 'generate-region-features'],
+    choices=['make-ome', 'generate-spatial-features', 'generate-region-features', 'show-channels'],
     help='Which task mip is to execute.')
+
+
+###################
+## show-channels ##
+###################
+## --ome-tiff
+
+parser.add_argument('--sep', type=str, default='\n',
+    help='Seperator between channel names. Defaults to newline character (i.e. channels are displayed on seperate lines)')
 
 ##############
 ## make-ome ##
@@ -48,9 +57,6 @@ parser.add_argument('--output-prefix', type=str, default='output',
 parser.add_argument('--spatial-features', type=str,
     help='Filepath of a tab-seperated .txt file with columns specifying coordinates cell annotations in slide. First column is cell ID, second and third columns are treated as "x" and "y" coordinates respectively. All following columns are treated as cell metadata features and seperate fractions/metrics will be generated for each feature.')
 
-# parser.add_argument('--ome-tiff', type=str,
-#     help='Filepath of slide ome.tiff')
-
 parser.add_argument('--regions-mask', type=str,
     help='Filepath of region mask that will be used when calculating metrics. Mask should be a .tif file and the same height and width as --ome-tiff.')
 
@@ -66,16 +72,10 @@ parser.add_argument('--output-dir', type=str, default='output',
 parser.add_argument('--boundary-dist', type=int, default=150,
     help='Distance (in pixels) to draw boundary around each region.')
 
-# parser.add_argument('--epithelial-offset', type=int, default=10,
-#     help='Distance (in pixels) outside region duct boundary to draw epithelial boundary')
-
-# parser.add_argument('--inner-offset', type=int, default=10,
-#     help='Distance (in pixels) inside region boundary to draw inner-most arc used in calculating grid metrics.')
-
 parser.add_argument('--perp-steps', type=int, default=10,
     help='Number of arcs to generate for region grid when drawing grid polygons.')
 
-parser.add_argument('--expansion', type=int, default=50,
+parser.add_argument('--expansion', type=int, default=30,
     help='Distance (in pixels) of innermost arc to outermost arc.')
 
 parser.add_argument('--parallel-step', type=int, default=50,
@@ -102,6 +102,11 @@ parser.add_argument('--skip-grid-metrics', action='store_true',
 
 args = parser.parse_args()
 
+
+def run_show_channels(ome_tiff_fp, sep):
+    channels = utils.get_ome_tiff_channels(ome_tiff_fp)
+    print(sep.join(channels))
+    
 
 def run_make_ome(input_tif, output_fp, platform='phenocycler'):
     if platform in ['codex', 'raw']:
@@ -150,8 +155,11 @@ def main():
             args.label_image, args.ome_tiff, output_prefix=args.output_prefix)
     elif args.mode == 'generate-region-features':
         run_generate_region_features()
+    elif args.mode == 'show-channels':
+        run_show_channels(args.ome_tiff, args.sep)
     else:
         raise RuntimeError(f'{args.mode} is not a valid mode.')
+    
 
 
 if __name__ == '__main__':

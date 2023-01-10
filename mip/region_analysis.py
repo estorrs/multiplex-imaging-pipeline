@@ -16,7 +16,7 @@ import rasterio
 import tifffile
 
 from skimage.morphology import label, remove_small_objects, erosion, binary_dilation, binary_erosion
-from skimage.measure import regionprops_table
+from skimage.measure import regionprops_table, regionprops
 from skimage.segmentation import expand_labels
 from shapely import Polygon, Point, STRtree
 from shapely.wkt import dumps
@@ -24,7 +24,7 @@ from rasterio import features
 
 from mip.utils import extract_ome_tiff
 
-DEBUG_DIR = '/diskmnt/Projects/Users/estorrs/multiplex_data/analysis/dcis_region_analysis/angelo_v1'
+DEBUG_DIR = '/diskmnt/Projects/Users/estorrs/sandbox'
 
 
 def compute_polsby_popper(area, perimeter):
@@ -43,6 +43,8 @@ def get_regionprops_df(labeled_img,
 
 
 def get_morphology_masks(labeled_img, myoepi_dist=40, boundary_dist=150):
+    #expand by ~1 micron to avoid errors
+    labeled_img = expand_labels(labeled_img, distance=2)
     mask = labeled_img > 0
 
     # myoepithelial
@@ -75,17 +77,25 @@ def get_morphology_masks(labeled_img, myoepi_dist=40, boundary_dist=150):
     return labeled_dict, mask_dict
 
 
-def mask_to_polygon(mask):
-    for shape, _ in features.shapes(mask.astype(np.int16), connectivity=4, mask=(mask >0),
-                                    transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0)):
+def mask_to_polygon(mask, use_biggest=True):
+    for i, (shape, _) in enumerate(features.shapes(mask.astype(np.int32), connectivity=4, mask=(mask>0),
+                                    transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0))):
+        ring = shapely.geometry.shape(shape)
+        print('ring', i, ring.exterior.length)
+    for i, (shape, _) in enumerate(features.shapes(mask.astype(np.int32), connectivity=4, mask=(mask>0),
+                                    transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0))):
         return shapely.geometry.shape(shape)
 
 
 def generate_labeled_expansion_grid(
         mask, parallel_step=50, perp_steps=5, expansion=80, grouping_dist=10):
-
+    regions = regionprops(label(mask))
+    assert len(regions) == 1
+    print('perimeter', regions[0].perimeter)
+    tifffile.imsave(os.path.join(DEBUG_DIR, str(regions[0].perimeter) + 'region_mask.npy'), mask)
     # np.save(os.path.join(DEBUG_DIR, 'region_mask.npy'), mask)
     ring = mask_to_polygon(mask).exterior
+    print('first ring length', ring.length)
     
     # test for left and right
     left_ring = ring.parallel_offset(5, side='left')
@@ -142,7 +152,8 @@ def generate_labeled_expansion_grid(
         # close outer rings
         poly_pts = [last_inner_pt, last_outer_pt, first_outer_pt, first_inner_pt]
         if any([x is None for x in poly_pts]):
-            logging.info(f'arc {j} closing failed: last inner - {last_inner_pt}, last outer - {last_outer_pt}, first outer - {first_outer_pt}, first inner - {first_inner_pt}')
+            pass
+            # logging.info(f'arc {j} closing failed: last inner - {last_inner_pt}, last outer - {last_outer_pt}, first outer - {first_outer_pt}, first inner - {first_inner_pt}')
         else:
             poly_pts = [pt.coords[0] for pt in poly_pts]
             poly = Polygon(poly_pts)
@@ -173,12 +184,16 @@ def generate_labeled_expansion_grid(
 def generate_grid_props(region_id, labeled_dict, region_to_bbox,
                         parallel_step=50, perp_steps=5,
                         expansion=80, grouping_dist=10):
+    print('region id', region_id)
     r1, c1, r2, c2 = region_to_bbox[region_id]
-    mask = (labeled_dict['region'][r1:r2, c1:c2]==region_id).astype(np.int16)
+    print('bbox', (r1, r2, c1, c2))
+    mask = (labeled_dict['region'][r1:r2, c1:c2]==region_id).astype(np.int32)
+    print('mask count', np.count_nonzero(mask))
     labeled_grid, polys, groups, group_lines, rings = generate_labeled_expansion_grid(
         mask, parallel_step=parallel_step, perp_steps=perp_steps,
         expansion=expansion, grouping_dist=grouping_dist
     )
+    print('ring length', rings[0].length)
 
     return labeled_grid, polys, groups, group_lines, rings
 
@@ -189,11 +204,13 @@ def generate_grid_dict(region_to_bbox, labeled_dict,
     grid_dict = {}
     for region_id in region_to_bbox.keys():
         logging.info(f'Generating grid properties for region {region_id}')
+        print('region id', region_id)
         labeled_grid, polys, groups, group_lines, rings = generate_grid_props(
             region_id, labeled_dict, region_to_bbox,
             parallel_step=parallel_step, perp_steps=perp_steps,
             expansion=expansion, grouping_dist=grouping_dist
         )
+        print('region id', region_id)
         grid_dict[region_id] = {
             'labeled_grid': labeled_grid,
             'polys': polys,
@@ -352,7 +369,7 @@ def add_cell_fractions(spatial_feats_df, props_dict, cell_type_col='cell_type'):
         for region in df.index:
             ls = spatial_feats_df[spatial_feats_df[f'{name}_region_id']==region][cell_type_col]
             counts = Counter(ls)
-            data.append([counts[ct] / (len(ls) + 1) for ct in cell_types])
+            data.append([counts.get(ct, 0) / (len(ls) + 1) for ct in cell_types])
         frac_df = pd.DataFrame(
             data=data, columns=[f'{cell_type_col}_{ct}_cell_fraction'
                                 for ct in cell_types],
@@ -530,53 +547,53 @@ def generate_region_metrics(
     labeled_dict, mask_dict = get_morphology_masks(
         initial_labeled, boundary_dist=boundary_dist, myoepi_dist=expansion)
     region_labeled = labeled_dict['region'].copy()
-    region_mask = mask_dict['region'].copy()
-    initial_region_df = get_regionprops_df(region_labeled)
+    # region_mask = mask_dict['region'].copy()
+    # initial_region_df = get_regionprops_df(region_labeled)
 
-    if min_region_size is not None:
-        logging.info('removing small regions')
-        region_mask = remove_small_objects(region_mask, min_size=min_region_size)
-        region_labeled[~region_mask] = 0
+    # if min_region_size is not None:
+    #     logging.info('removing small regions')
+    #     region_mask = remove_small_objects(region_mask, min_size=min_region_size)
+    #     region_labeled[~region_mask] = 0
 
     region_df = get_regionprops_df(region_labeled)
     n_regions = region_df.shape[0]
     logging.info(f'Labeled region props generated. {n_regions} total regions.')
 
-    # # allows for max size threshold, speeds up runs for debugging purposes
-    if max_region_size is not None:
-        logging.info(f'filtering regions with area greater than {max_region_size}')
-        remove = [l for l, area in zip(region_df.index, region_df['area'])
-                  if area > max_region_size]
+    # # # allows for max size threshold, speeds up runs for debugging purposes
+    # if max_region_size is not None:
+    #     logging.info(f'filtering regions with area greater than {max_region_size}')
+    #     remove = [l for l, area in zip(region_df.index, region_df['area'])
+    #               if area > max_region_size]
 
-        for l in remove:
-            r1, c1, r2, c2 = (region_df.loc[l, 'bbox-0'], region_df.loc[l, 'bbox-1'],
-                              region_df.loc[l, 'bbox-2'], region_df.loc[l, 'bbox-3'])
-            cropped = region_labeled[r1:r2, c1:c2] # cropping is much faster
-            new = cropped.copy()
-            new[cropped==l] = 0
-            region_labeled[r1:r2, c1:c2] = new
-        region_mask = region_labeled > 0
+    #     for l in remove:
+    #         r1, c1, r2, c2 = (region_df.loc[l, 'bbox-0'], region_df.loc[l, 'bbox-1'],
+    #                           region_df.loc[l, 'bbox-2'], region_df.loc[l, 'bbox-3'])
+    #         cropped = region_labeled[r1:r2, c1:c2] # cropping is much faster
+    #         new = cropped.copy()
+    #         new[cropped==l] = 0
+    #         region_labeled[r1:r2, c1:c2] = new
+    #     region_mask = region_labeled > 0
 
-        # regenerate region_df
-        region_df = get_regionprops_df(region_labeled)
-        n_regions = region_df.shape[0]
-        logging.info(f'{n_regions} regions remaining after area filtering')
+    #     # regenerate region_df
+    #     region_df = get_regionprops_df(region_labeled)
+    #     n_regions = region_df.shape[0]
+    #     logging.info(f'{n_regions} regions remaining after area filtering')
 
-    # resychronize masks and labeled imgs
-    logging.info('resynchronizing labeled masks')
-    region_ids = region_df.index.to_list()
-    previous_ids = initial_region_df.index.to_list()
-    to_remove = set(previous_ids) - set(region_ids)
-    for name, img in labeled_dict.items():
-        for l in to_remove:
-            r1, c1, r2, c2 = (initial_region_df.loc[l, 'bbox-0'], initial_region_df.loc[l, 'bbox-1'],
-                            initial_region_df.loc[l, 'bbox-2'], initial_region_df.loc[l, 'bbox-3'])
-            cropped = img[r1:r2, c1:c2] # cropping is much faster
-            new = cropped.copy()
-            new[cropped==l] = 0
-            img[r1:r2, c1:c2] = new
-        labeled_dict[name] = img
-        mask_dict[name] = img > 0
+    # # resychronize masks and labeled imgs
+    # logging.info('resynchronizing labeled masks')
+    # region_ids = region_df.index.to_list()
+    # previous_ids = initial_region_df.index.to_list()
+    # to_remove = set(previous_ids) - set(region_ids)
+    # for name, img in labeled_dict.items():
+    #     for l in to_remove:
+    #         r1, c1, r2, c2 = (initial_region_df.loc[l, 'bbox-0'], initial_region_df.loc[l, 'bbox-1'],
+    #                         initial_region_df.loc[l, 'bbox-2'], initial_region_df.loc[l, 'bbox-3'])
+    #         cropped = img[r1:r2, c1:c2] # cropping is much faster
+    #         new = cropped.copy()
+    #         new[cropped==l] = 0
+    #         img[r1:r2, c1:c2] = new
+    #     labeled_dict[name] = img
+    #     mask_dict[name] = img > 0
 
     props_dict = {}
     for name, img in labeled_dict.items():

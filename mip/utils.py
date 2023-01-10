@@ -42,6 +42,13 @@ def extract_ome_tiff(fp, channels=None):
     return d
 
 
+def get_ome_tiff_channels(fp):   
+    tif = TiffFile(fp)
+    ome = from_xml(tif.ome_metadata)
+    im = ome.images[0]
+    return [c.name for c in im.pixels.channels]
+
+
 def create_circular_mask(h, w, center=None, radius=None):
     """
     https://stackoverflow.com/questions/44865023/how-can-i-create-a-circular-mask-for-a-numpy-array
@@ -66,14 +73,14 @@ def display_slide_from_adata(a, x='centroid_col', y='centroid_row_inverted', col
 
 
 def display_region(labeled_img, region_to_value, region_to_bbox,
-                   cmap=None, add_alpha=True, save_fp=None):
+                   cmap=None, add_alpha=True, save_fp=None, vmin=None, vmax=None):
     regions, vals = zip(*region_to_value.items())
     try:
         float(vals[0])
         is_numeric = True
-        cmap = cmap if cmap is not None else 'Reds'
-        max_val = max(vals)
-        min_val = min(vals)
+        cmap = cmap if cmap is not None else 'viridis'
+        max_val = max(vals) if vmax is None else vmax
+        min_val = min(vals) if vmin is None else vmin
         bins = np.linspace(min_val, max_val, 100)
         val_to_color = {b:c for b, c in zip(np.arange(100), sns.color_palette(cmap, n_colors=100))}
     except:
@@ -92,11 +99,14 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
         vals = np.digitize(vals, bins) - 1
 
     for region_id, val in zip(regions, vals):
-        r1, c1, r2, c2 = region_to_bbox[region_id]
-        cropped_labeled = labeled_img[r1:r2, c1:c2]
-        cropped_rgb = rgb[r1:r2, c1:c2]
-        cropped_rgb[cropped_labeled==region_id] = val_to_color[val] # faster on cropped
-        rgb[r1:r2, c1:c2] = cropped_rgb
+        if region_to_bbox is not None:
+            r1, c1, r2, c2 = region_to_bbox[region_id]
+            cropped_labeled = labeled_img[r1:r2, c1:c2]
+            cropped_rgb = rgb[r1:r2, c1:c2]
+            cropped_rgb[cropped_labeled==int(region_id)] = val_to_color[val] # faster on cropped
+            rgb[r1:r2, c1:c2] = cropped_rgb
+        else:
+            rgb[labeled_img==int(region_id)] = val_to_color[val]
 
     if add_alpha:
         rgb = np.concatenate((rgb, np.ones((rgb.shape[0], rgb.shape[1], 1))), axis=-1)
