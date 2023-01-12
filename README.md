@@ -99,3 +99,6 @@ inputs:
 ```bash
 mip generate-region-features --spatial-features </path/to/spatial_features/*.txt> --ome-tiff </path/to/*.ome.tiff> --region-mask </path/to/region_mask/*.tif> --channel-thresholds-grid </path/to/channel_thresholds_grid/*.txt> --channel-thresholds-pixel </path/to/channel_thresholds_pixel/*.txt> --output-dir </path/to/output/dir>
 ```
+
+usage: mip [-h] [--sep SEP] [--input-tif INPUT_TIF] [--output-filepath OUTPUT_FILEPATH] [--platform {codex,phenocycler,raw}] [--bbox BBOX] [--label-image LABEL_IMAGE] [--ome-tiff OME_TIFF] [--output-prefix OUTPUT_PREFIX] [--spatial-features SPATIAL_FEATURES] [--regions-mask REGIONS_MASK] [--channel-thresholds-grid CHANNEL_THRESHOLDS_GRID] [--channel-thresholds-pixel CHANNEL_THRESHOLDS_PIXEL] [--output-dir OUTPUT_DIR] [--boundary-dist BOUNDARY_DIST] [--perp-steps PERP_STEPS] [--expansion EXPANSION] [--parallel-step PARALLEL_STEP] [--breakage-dist BREAKAGE_DIST] [--area_thresh AREA_THRESH] [--breakage-line-thresh BREAKAGE_LINE_THRESH] [--min-region-size MIN_REGION_SIZE] [--max-region-size MAX_REGION_SIZE] [--skip-grid-metrics]
+{make-ome,generate-spatial-features,generate-region-features,show-channels}
