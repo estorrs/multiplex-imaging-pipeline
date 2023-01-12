@@ -38,7 +38,7 @@ def identity(c):
     return c
 
 
-def generate_ome_from_tifs(fps, output_fp, platform='codex'):
+def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None):
     """
     Generate an HTAN compatible ome tiff from a list of filepaths, where each filepath is a tiff representing a different channel.
 
@@ -60,11 +60,17 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex'):
     name_to_identifier = {k:n for k, n in zip(keep, new)}
     
     x, y = None, None
+    logging.info(f'bbox detected, cropping to {bbox}')
     with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
         for i, fp in enumerate(fps):
             if i in keep_idxs:
                 img = tifffile.imread(fp)
                 x, y = img.shape[1], img.shape[0]
+                if bbox is not None:
+                    r1, r2, c1, c2 = bbox
+                    y = r2 - r1
+                    x = c2 - c1
+                    img = img[r1:r2, c1:c2]
                 out_tif.write(img.astype(np.uint16))
         o = model.OME()
         o.images.append(model.Image(id='Image:0', pixels=model.Pixels(dimension_order='XYCZT',
@@ -89,7 +95,7 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex'):
         out_tif.overwrite_description(xml_str.encode())
 
 
-def generate_ome_from_qptiff(qptiff_fp, output_fp):
+def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None):
     """
     Generate an HTAN compatible ome tiff from qptiff output by codex phenocycler
     """
@@ -98,7 +104,7 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp):
     s = tf.series[0] # full res tiffs are in the first series
     n_channels = s.get_shape()[0]
     logging.info(f'image has {n_channels} total biomarkers')
-
+    logging.info(f'bbox detected, cropping to {bbox}')
     x, y = None, None
     with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
         biomarkers = []
@@ -109,6 +115,12 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp):
             biomarker = d['Biomarker']
             biomarkers.append(biomarker)
             logging.info(f'writing {biomarker}')
+            if bbox is not None:
+                r1, r2, c1, c2 = bbox
+                y = r2 - r1
+                x = c2 - c1
+                img = img[r1:r2, c1:c2]
+
             out_tif.write(img.astype(np.uint8)) # phenocycler outputs are uint8
         o = model.OME()
         o.images.append(

@@ -14,7 +14,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('mode', type=str,
-    choices=['make-ome', 'generate-spatial-features', 'generate-region-features', 'show-channels'],
+    choices=['make-ome', 'generate-spatial-features', 'generate-region-features', 'show-channels', 'crop-ome'],
     help='Which task mip is to execute.')
 
 
@@ -38,6 +38,9 @@ parser.add_argument('--output-filepath', type=str,
 parser.add_argument('--platform', type=str,
     choices=['codex', 'phenocycler', 'raw'], default='phenocycler',
     help='Which platform produced the input images. Raw will stitch a directory of .tifs together without and channel name parsing.')
+
+parser.add_argument('--bbox', type=str,
+    help='If desired, bbox in to crop image with. Must be the following format: "top,bottom,left,right"')
 
 ###############################
 ## generate-spatial-features ##
@@ -75,7 +78,7 @@ parser.add_argument('--boundary-dist', type=int, default=150,
 parser.add_argument('--perp-steps', type=int, default=10,
     help='Number of arcs to generate for region grid when drawing grid polygons.')
 
-parser.add_argument('--expansion', type=int, default=30,
+parser.add_argument('--expansion', type=int, default=40,
     help='Distance (in pixels) of innermost arc to outermost arc.')
 
 parser.add_argument('--parallel-step', type=int, default=50,
@@ -103,17 +106,20 @@ parser.add_argument('--skip-grid-metrics', action='store_true',
 args = parser.parse_args()
 
 
+
 def run_show_channels(ome_tiff_fp, sep):
     channels = utils.get_ome_tiff_channels(ome_tiff_fp)
     print(sep.join(channels))
     
 
-def run_make_ome(input_tif, output_fp, platform='phenocycler'):
+def run_make_ome(input_tif, output_fp, platform='phenocycler', bbox=None):
+    if bbox is not None and isinstance(bbox, str):
+        bbox = [int(x) for x in bbox.split(',')]
     if platform in ['codex', 'raw']:
         fps = sorted(utils.listfiles(input_tif, regex=r'.tif[f]*$'))
-        generate_ome_from_tifs(fps, output_fp, platform=platform)
+        generate_ome_from_tifs(fps, output_fp, platform=platform, bbox=bbox)
     elif platform == 'phenocycler':
-        generate_ome_from_qptiff(input_tif, output_fp)
+        generate_ome_from_qptiff(input_tif, output_fp, bbox=bbox)
     logging.info(f'ome.tiff written to {output_fp}')
 
 
@@ -149,7 +155,7 @@ def run_generate_region_features():
 
 def main():
     if args.mode == 'make-ome':
-        run_make_ome(args.input_tif, args.output_filepath, platform=args.platform)
+        run_make_ome(args.input_tif, args.output_filepath, platform=args.platform, bbox=args.bbox)
     elif args.mode == 'generate-spatial-features':
         run_generate_spatial_features(
             args.label_image, args.ome_tiff, output_prefix=args.output_prefix)

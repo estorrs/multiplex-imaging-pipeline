@@ -13,7 +13,7 @@ setup(
     # $ pip install mip
     name='mip',
     version='0.0.1',
-    description='A Python library for dinglab multiplex imaging analysis',
+    description='A Python library for multiplex imaging analysis',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/estorrs/multiplex-imaging-analysis',
@@ -25,12 +25,26 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
-    keywords='multiplex imaging codex neighborhood analysis image segmentation',
+    keywords='multiplex imaging codex neighborhood analysis image segmentation visualization mibi codex phenocycler mihc hyperion',
     packages=find_packages(),
     python_requires='>=3.6',
     install_requires=[
-        ],
+        'numpy',
+        'pandas',
+        'matplotlib',
+        'scanpy',
+        'seaborn',
+        'tifffile',
+        'ome-types',
+        'scikit-image',
+        'scikit-learn',
+        'shapely',
+        'rasterio',
+        'gensim',
+        'squidpy'
+    ],
     include_package_data=True,
 
     entry_points={

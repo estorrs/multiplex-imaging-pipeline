@@ -8,6 +8,7 @@ import seaborn as sns
 import tifffile
 from tifffile import TiffFile
 from ome_types import from_tiff, from_xml
+from skimage.exposure import rescale_intensity
 
 
 def listfiles(folder, regex=None):
@@ -113,3 +114,29 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
         rgb[labeled_img==0] = [1., 1., 1., 0.]
 
     return rgb
+
+
+def make_pseudo(channel_to_img, cmap=None, contrast_pct=20.):
+    cmap = sns.color_palette('tab10') if cmap is None else cmap
+
+    new = np.zeros_like(next(iter(channel_to_img.values())))
+    img_stack = []
+    for i, (channel, img) in enumerate(channel_to_img.items()):
+        color = cmap[i] if not isinstance(cmap, dict) else cmap[channel]
+        new = img.copy().astype(np.float32)
+        new -= new.min()
+        new /= new.max()
+
+        try:
+            vmax = np.percentile(new[new>0], (contrast_pct)) if np.count_nonzero(new) else 1.
+            new = rescale_intensity(new, in_range=(0., vmax))
+        except IndexError:
+            pass
+
+        new = np.repeat(np.expand_dims(new, -1), 3, axis=-1)
+        new *= color
+        img_stack.append(new)
+    stack = np.mean(np.asarray(img_stack), axis=0)
+    stack -= stack.min()
+    stack /= stack.max()
+    return stack
