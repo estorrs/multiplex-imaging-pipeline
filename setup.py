@@ -10,8 +10,8 @@ with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 setup(
-    # $ pip install mip
-    name='mip',
+    # $ pip install multiplex-imaging-pipeline
+    name='multiplex-imaging-pipeline',
     version='0.0.1',
     description='A Python library for multiplex imaging analysis',
     long_description=long_description,
