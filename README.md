@@ -10,7 +10,11 @@ A pipeline for multiplex imaging analysis
 pip install multiplex-imaging-pipeline
 ```
 
-## Usage
+## Cell Annotation
+
+See example notebook [here](https://github.com/estorrs/multiplex-imaging-pipeline/blob/main/notebooks/cell_annotation_example.ipynb) for an example of how to perform cell annotation on the output of `mip generate-spatial-features`. 
+
+## CLI usage
 
 The multiplex imaging analysis command line tool has four main modes:
 + make-ome
