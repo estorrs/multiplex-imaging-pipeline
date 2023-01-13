@@ -6,6 +6,8 @@ A pipeline for multiplex imaging analysis
 
 ## Installation
 
+multiplex-imaging-pipeline can be installed in any environment that has Python >= 3.6
+
 ```bash
 pip install multiplex-imaging-pipeline
 ```
