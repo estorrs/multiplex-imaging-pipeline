@@ -92,13 +92,17 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
                 cmap = 'tab10'
             else:
                 cmap = 'tab20'
-        val_to_color = {b:c for b, c in zip(cats, sns.color_palette(cmap))}
+        if isinstance(cmap, str):
+            val_to_color = {b:c for b, c in zip(cats, sns.color_palette(cmap))}
+        else:
+            val_to_color = cmap
 
     rgb = np.full((labeled_img.shape[0], labeled_img.shape[1], 3), 1., dtype=np.float32)
 
     if is_numeric:
         vals = np.digitize(vals, bins) - 1
 
+    region_mask = np.zeros((labeled_img.shape[0], labeled_img.shape[1]), dtype=bool)
     for region_id, val in zip(regions, vals):
         if region_to_bbox is not None:
             r1, c1, r2, c2 = region_to_bbox[region_id]
@@ -106,12 +110,15 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
             cropped_rgb = rgb[r1:r2, c1:c2]
             cropped_rgb[cropped_labeled==int(region_id)] = val_to_color[val] # faster on cropped
             rgb[r1:r2, c1:c2] = cropped_rgb
+            region_mask[r1:r2, c1:c2] = cropped_labeled==int(region_id)
         else:
             rgb[labeled_img==int(region_id)] = val_to_color[val]
+            region_mask[labeled_img==int(region_id)] = True
 
     if add_alpha:
         rgb = np.concatenate((rgb, np.ones((rgb.shape[0], rgb.shape[1], 1))), axis=-1)
-        rgb[labeled_img==0] = [1., 1., 1., 0.]
+        # rgb[labeled_img==0] = [1., 1., 1., 0.]
+        rgb[~region_mask] = [1., 1., 1., 0.]
 
     return rgb
 

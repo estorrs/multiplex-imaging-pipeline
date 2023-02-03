@@ -14,6 +14,7 @@ import shapely
 import rasterio
 import tifffile
 
+from scipy.spatial import Voronoi
 from skimage.morphology import label, remove_small_objects, erosion, binary_dilation, binary_erosion
 from skimage.measure import regionprops_table, regionprops
 from skimage.segmentation import expand_labels
@@ -31,6 +32,25 @@ def compute_polsby_popper(area, perimeter):
         return 4 * math.pi * area / perimeter ** 2
     except ZeroDivisionError:
         return math.nan
+
+
+def compute_voronoi_entropy(pts):
+    if len(pts) <= 4:
+        return np.nan
+
+    vor = Voronoi(pts)
+    regs = [reg for reg in vor.regions if -1 not in reg and reg]
+    n_sides = np.asarray([len(reg) for reg in regs])
+    if not len(n_sides):
+        return np.nan
+
+    total = 0
+    for i in range(3, np.max(n_sides)):
+        p_i = np.count_nonzero(n_sides==i) / len(n_sides)
+        if p_i:
+            total -= p_i * np.log(p_i)
+
+    return total
 
 
 def get_regionprops_df(labeled_img,
@@ -80,7 +100,6 @@ def mask_to_polygon(mask, use_biggest=True):
     for i, (shape, _) in enumerate(features.shapes(mask.astype(np.int32), connectivity=4, mask=(mask>0),
                                     transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0))):
         ring = shapely.geometry.shape(shape)
-        print('ring', i, ring.exterior.length)
     for i, (shape, _) in enumerate(features.shapes(mask.astype(np.int32), connectivity=4, mask=(mask>0),
                                     transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0))):
         return shapely.geometry.shape(shape)
@@ -90,11 +109,9 @@ def generate_labeled_expansion_grid(
         mask, parallel_step=50, perp_steps=5, expansion=80, grouping_dist=10):
     regions = regionprops(label(mask))
     assert len(regions) == 1
-    print('perimeter', regions[0].perimeter)
     tifffile.imsave(os.path.join(DEBUG_DIR, str(regions[0].perimeter) + 'region_mask.npy'), mask)
     # np.save(os.path.join(DEBUG_DIR, 'region_mask.npy'), mask)
     ring = mask_to_polygon(mask).exterior
-    print('first ring length', ring.length)
     
     # test for left and right
     left_ring = ring.parallel_offset(5, side='left')
@@ -183,16 +200,12 @@ def generate_labeled_expansion_grid(
 def generate_grid_props(region_id, labeled_dict, region_to_bbox,
                         parallel_step=50, perp_steps=5,
                         expansion=80, grouping_dist=10):
-    print('region id', region_id)
     r1, c1, r2, c2 = region_to_bbox[region_id]
-    print('bbox', (r1, r2, c1, c2))
     mask = (labeled_dict['region'][r1:r2, c1:c2]==region_id).astype(np.int32)
-    print('mask count', np.count_nonzero(mask))
     labeled_grid, polys, groups, group_lines, rings = generate_labeled_expansion_grid(
         mask, parallel_step=parallel_step, perp_steps=perp_steps,
         expansion=expansion, grouping_dist=grouping_dist
     )
-    print('ring length', rings[0].length)
 
     return labeled_grid, polys, groups, group_lines, rings
 
@@ -203,13 +216,11 @@ def generate_grid_dict(region_to_bbox, labeled_dict,
     grid_dict = {}
     for region_id in region_to_bbox.keys():
         logging.info(f'Generating grid properties for region {region_id}')
-        print('region id', region_id)
         labeled_grid, polys, groups, group_lines, rings = generate_grid_props(
             region_id, labeled_dict, region_to_bbox,
             parallel_step=parallel_step, perp_steps=perp_steps,
             expansion=expansion, grouping_dist=grouping_dist
         )
-        print('region id', region_id)
         grid_dict[region_id] = {
             'labeled_grid': labeled_grid,
             'polys': polys,
@@ -358,7 +369,17 @@ def generate_grid_metrics(region_id, grid_dict, region_to_bbox, channel_to_img,
 def add_polsby_popper(props_dict):
     for name, df in props_dict.items():
         df['compactness'] = [compute_polsby_popper(area, per)
-                             for area, per in zip(df['area'], df['perimeter'])]                    
+                             for area, per in zip(df['area'], df['perimeter'])]              
+
+
+def add_voronoi_entropy(spatial_feats_df, props_dict, x_col='x', y_col='y'):
+    for name, df in props_dict.items():
+        ves = []
+        for region_id in df.index.to_list():
+            f = spatial_feats_df[spatial_feats_df[f'{name}_region_id']==region_id]
+            pts = np.asarray([[r, c] for r, c in zip(f[x_col], f[y_col])])
+            ves.append(compute_voronoi_entropy(pts))
+        df['voronoi_entropy'] = ves
 
 
 def add_cell_fractions(spatial_feats_df, props_dict, cell_type_col='cell_type'):
@@ -623,6 +644,9 @@ def generate_region_metrics(
     logging.info('calculating polsby popper compactness')
     # compactness
     add_polsby_popper(props_dict)
+
+    logging.info('calculating voronoi entropy')
+    add_voronoi_entropy(spatial_features_df, props_dict, x_col=x_col, y_col=y_col)
 
     logging.info('calculating border region cellular metadata fractions')
     # cell fractions
