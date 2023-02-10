@@ -60,7 +60,8 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None):
     name_to_identifier = {k:n for k, n in zip(keep, new)}
     
     x, y = None, None
-    logging.info(f'bbox detected, cropping to {bbox}')
+    if bbox is not None:
+        logging.info(f'bbox detected, cropping to {bbox}')
     with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
         for i, fp in enumerate(fps):
             if i in keep_idxs:
