@@ -6,10 +6,9 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86_64.
 RUN bash ~/miniconda.sh -b -p /miniconda
 ENV PATH="/miniconda/bin:$PATH"
 
-RUN conda install -y -c ome python=3.6 zeroc-ice36-python omero-py
-RUN conda install -y -c conda-forge openjdk pandas
-RUN pip install jupyter pyyaml
+RUN conda install -y -c conda-forge jupyter
 
 COPY . /multiplex-imaging-pipeline
+RUN pip install /multiplex-imaging-pipeline
 
 CMD /bin/bash
