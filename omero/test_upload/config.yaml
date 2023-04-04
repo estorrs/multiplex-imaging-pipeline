@@ -1,0 +1,5 @@
+columns:
+- target
+- name
+- path
+path: /diskmnt/Projects/Users/estorrs/multiplex-imaging-pipeline/omero/test_upload/files.tsv
