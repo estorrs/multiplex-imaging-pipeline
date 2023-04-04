@@ -83,8 +83,8 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None):
               type='float',
               big_endian=False,
               channels=[model.Channel(id=f'Channel:{i}', name=f'{name_to_identifier[c]}') for i, c in enumerate(keep)],
-              physical_size_x=float(x),
-              physical_size_y=float(y),)))
+              physical_size_x=float(x) / PHENOCYCLER_PIXELS_PER_MICRON,
+              physical_size_y=float(y) / PHENOCYCLER_PIXELS_PER_MICRON,)))
         
         im = o.images[0]
         im.pixels.physical_size_x_unit = 'µm'
@@ -105,7 +105,9 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None):
     s = tf.series[0] # full res tiffs are in the first series
     n_channels = s.get_shape()[0]
     logging.info(f'image has {n_channels} total biomarkers')
-    logging.info(f'bbox detected, cropping to {bbox}')
+
+    if bbox is not None:
+        logging.info(f'bbox detected, cropping to {bbox}')
     x, y = None, None
     with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
         biomarkers = []
@@ -138,7 +140,7 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None):
                     big_endian=False,
                     channels=[model.Channel(id=f'Channel:{i}', name=c) for i, c in enumerate(biomarkers)],
                     physical_size_x=x / PHENOCYCLER_PIXELS_PER_MICRON,
-                    physical_size_y=x / PHENOCYCLER_PIXELS_PER_MICRON,
+                    physical_size_y=y / PHENOCYCLER_PIXELS_PER_MICRON,
                 )
             )
         )

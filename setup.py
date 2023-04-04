@@ -44,7 +44,7 @@ setup(
         'rasterio',
         'gensim',
         'squidpy',
-        'imagecodecs',
+        'imagecodecs'
     ],
     include_package_data=True,
 
