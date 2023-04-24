@@ -6,6 +6,8 @@ import numpy as np
 import tifffile
 from ome_types import from_tiff, from_xml, to_xml, model
 from ome_types.model.simple_types import UnitsLength
+from einops import rearrange
+from skimage.transform import rescale
 
 from mip.utils import listfiles
 
@@ -38,7 +40,7 @@ def identity(c):
     return c
 
 
-def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None):
+def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_type='uint16', subresolutions=5):
     """
     Generate an HTAN compatible ome tiff from a list of filepaths, where each filepath is a tiff representing a different channel.
 
@@ -55,101 +57,173 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None):
 
     keep_idxs, keep = zip(*[(i, n) for i, n in enumerate(names)
                             if mapping(n) is not None])
-    new = [CHANNEL_MAP.get(mapping(n), mapping(n))
-           for n in keep]
-    name_to_identifier = {k:n for k, n in zip(keep, new)}
-    
-    x, y = None, None
-    if bbox is not None:
-        logging.info(f'bbox detected, cropping to {bbox}')
-    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
-        for i, fp in enumerate(fps):
-            if i in keep_idxs:
-                img = tifffile.imread(fp)
-                x, y = img.shape[1], img.shape[0]
-                if bbox is not None:
-                    r1, r2, c1, c2 = bbox
-                    y = r2 - r1
-                    x = c2 - c1
-                    img = img[r1:r2, c1:c2]
-                out_tif.write(img.astype(np.uint16))
-        o = model.OME()
-        o.images.append(model.Image(id='Image:0', pixels=model.Pixels(dimension_order='XYCZT',
-              size_c=len(keep_idxs),
-              size_t=1,
-              size_x=x,
-              size_y=y,
-              size_z=1,
-              type='float',
-              big_endian=False,
-              channels=[model.Channel(id=f'Channel:{i}', name=f'{name_to_identifier[c]}') for i, c in enumerate(keep)],
-              physical_size_x=float(x) / PHENOCYCLER_PIXELS_PER_MICRON,
-              physical_size_y=float(y) / PHENOCYCLER_PIXELS_PER_MICRON,)))
-        
-        im = o.images[0]
-        im.pixels.physical_size_x_unit = 'µm'
-        im.pixels.physical_size_y_unit = 'µm'
-        for i in range(len(im.pixels.channels)):
-            im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
-        im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
-        xml_str = to_xml(o)
-        out_tif.overwrite_description(xml_str.encode())
+    n_channels = len(keep)
 
-
-def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None):
-    """
-    Generate an HTAN compatible ome tiff from qptiff output by codex phenocycler
-    """
-    tf = tifffile.TiffFile(qptiff_fp)
-
-    s = tf.series[0] # full res tiffs are in the first series
-    n_channels = s.get_shape()[0]
-    logging.info(f'image has {n_channels} total biomarkers')
-
-    if bbox is not None:
-        logging.info(f'bbox detected, cropping to {bbox}')
-    x, y = None, None
-    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
-        biomarkers = []
-        for i, p in enumerate(s.pages):
-            img = p.asarray()
-            x, y = img.shape[1], img.shape[0]
-            d = tifffile.xml2dict(p.description)['PerkinElmer-QPI-ImageDescription']
-            biomarker = d['Biomarker']
+    biomarkers = []
+    data = None
+    for i, fp in enumerate(fps):
+        if i in keep_idxs:
+            img = tifffile.imread(fp)
+            biomarker = mapping(names[i])
             biomarkers.append(biomarker)
-            logging.info(f'writing {biomarker}')
             if bbox is not None:
                 r1, r2, c1, c2 = bbox
                 y = r2 - r1
                 x = c2 - c1
                 img = img[r1:r2, c1:c2]
+            img = img.astype(np.float32)
+            img -= img.min()
+            img /= img.max()
+            if pixel_type == 'uint8':
+                img *= 255
+                img = img.astype(np.uint8)
+            else:
+                img *= 65535
+                img = img.astype(np.uint16) 
 
-            out_tif.write(img.astype(np.uint8)) # phenocycler outputs are uint8
-        o = model.OME()
-        o.images.append(
-            model.Image(
-                id='Image:0',
-                pixels=model.Pixels(
-                    dimension_order='XYCZT',
-                    size_c=n_channels,
-                    size_t=1,
-                    size_x=x,
-                    size_y=y,
-                    size_z=1,
-                    type='float',
-                    big_endian=False,
-                    channels=[model.Channel(id=f'Channel:{i}', name=c) for i, c in enumerate(biomarkers)],
-                    physical_size_x=x / PHENOCYCLER_PIXELS_PER_MICRON,
-                    physical_size_y=y / PHENOCYCLER_PIXELS_PER_MICRON,
-                )
+            if data is None:
+                if bbox is None:
+                    data = np.zeros((img.shape[1], img.shape[0], n_channels, 1, 1),
+                                    dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
+                else:
+                    logging.info(f'bbox detected, cropping to {bbox}')
+                    data = np.zeros((bbox[3] - bbox[2], bbox[1] - bbox[0], n_channels, 1, 1),
+                                    dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
+            else:
+                data[..., i, 0, 0] = np.swapaxes(img, 0, 1)
+    
+    o = model.OME()
+    o.images.append(
+        model.Image(
+            id='Image:0',
+            pixels=model.Pixels(
+                dimension_order='XYCZT',
+                size_c=n_channels,
+                size_t=1,
+                size_x=data.shape[0],
+                size_y=data.shape[1],
+                size_z=data.shape[3],
+                type=pixel_type,
+                big_endian=False,
+                channels=[model.Channel(id=f'Channel:{i}', name=c) for i, c in enumerate(biomarkers)],
+                physical_size_x=1 / PHENOCYCLER_PIXELS_PER_MICRON,
+                physical_size_y=1 / PHENOCYCLER_PIXELS_PER_MICRON,
+                physical_size_x_unit='µm',
+                physical_size_y_unit='µm'
             )
         )
+    )
 
-        im = o.images[0]
-        im.pixels.physical_size_x_unit = 'µm'
-        im.pixels.physical_size_y_unit = 'µm'
-        for i in range(len(im.pixels.channels)):
-            im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
-        im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
+    im = o.images[0]
+    for i in range(len(im.pixels.channels)):
+        im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
+    im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
+
+    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
+        opts = {
+            'compression': 'LZW',
+        }
+        out_tif.write(
+            rearrange(data, 'x y c z t -> t c y x z'),
+            subifds=subresolutions,
+            **opts
+        )
+        for level in range(subresolutions):
+            mag = 2**(level + 1)
+            sampled = rescale(data[..., 0, 0], 1 / mag, preserve_range=True, channel_axis=-1)
+            sampled = sampled.astype(np.uint8)
+            sampled = np.expand_dims(sampled, (-2, -1))
+            out_tif.write(
+                rearrange(sampled, 'x y c z t -> t c y x z'),
+                subfiletype=1,
+                **opts
+            )
+        xml_str = to_xml(o)
+        out_tif.overwrite_description(xml_str.encode())
+
+
+def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8', subresolutions=5):
+    """
+    Generate an HTAN compatible ome tiff from qptiff output by codex phenocycler
+    """
+    tf = tifffile.TiffFile(qptiff_fp)
+    s = tf.series[0] # full res tiffs are in the first series
+    n_channels = s.get_shape()[0]
+    shape = s.pages[0].shape
+    subresolutions = 5
+
+    if bbox is None:
+        data = np.zeros((shape[1], shape[0], n_channels, 1, 1),
+                        dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
+    else:
+        data = np.zeros((bbox[3] - bbox[2], bbox[1] - bbox[0], n_channels, 1, 1),
+                        dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
+    biomarkers = []
+    for i, p in enumerate(s.pages):
+        img = p.asarray()
+        d = tifffile.xml2dict(p.description)['PerkinElmer-QPI-ImageDescription']
+        biomarker = d['Biomarker']
+        biomarkers.append(biomarker)
+        if bbox is not None:
+            r1, r2, c1, c2 = bbox
+            img = img[r1:r2, c1:c2]
+        img = img.astype(np.float32)
+        img -= img.min()
+        img /= img.max()
+        if pixel_type == 'uint8':
+            img *= 255
+            img = img.astype(np.uint8)
+        else:
+            img *= 65535
+            img = img.astype(np.uint16) 
+
+        data[..., i, 0, 0] = np.swapaxes(img, 0, 1)
+
+    o = model.OME()
+    o.images.append(
+        model.Image(
+            id='Image:0',
+            pixels=model.Pixels(
+                dimension_order='XYCZT',
+                size_c=n_channels,
+                size_t=1,
+                size_x=data.shape[0],
+                size_y=data.shape[1],
+                size_z=data.shape[3],
+                type=pixel_type,
+                big_endian=False,
+                channels=[model.Channel(id=f'Channel:{i}', name=c) for i, c in enumerate(biomarkers)],
+                physical_size_x=1 / PHENOCYCLER_PIXELS_PER_MICRON,
+                physical_size_y=1 / PHENOCYCLER_PIXELS_PER_MICRON,
+                physical_size_x_unit='µm',
+                physical_size_y_unit='µm'
+            )
+        )
+    )
+
+    im = o.images[0]
+    for i in range(len(im.pixels.channels)):
+        im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
+    im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
+
+    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
+        opts = {
+            'compression': 'LZW',
+        }
+        out_tif.write(
+            rearrange(data, 'x y c z t -> t c y x z'),
+            subifds=subresolutions,
+            **opts
+        )
+        for level in range(subresolutions):
+            mag = 2**(level + 1)
+            sampled = rescale(data[..., 0, 0], 1 / mag, preserve_range=True, channel_axis=-1)
+            sampled = sampled.astype(np.uint8)
+            sampled = np.expand_dims(sampled, (-2, -1))
+            out_tif.write(
+                rearrange(sampled, 'x y c z t -> t c y x z'),
+                subfiletype=1,
+                **opts
+            )
         xml_str = to_xml(o)
         out_tif.overwrite_description(xml_str.encode())

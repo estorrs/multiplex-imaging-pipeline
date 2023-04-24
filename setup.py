@@ -33,6 +33,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
+        'einops',
         'matplotlib',
         'scanpy',
         'seaborn',

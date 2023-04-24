@@ -107,7 +107,11 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
         if region_to_bbox is not None:
             r1, c1, r2, c2 = region_to_bbox[region_id]
             cropped_labeled = labeled_img[r1:r2, c1:c2]
+            plt.imshow(cropped_labeled)
+            plt.show()
             cropped_rgb = rgb[r1:r2, c1:c2]
+            plt.imshow(cropped_rgb)
+            plt.show()
             cropped_rgb[cropped_labeled==int(region_id)] = val_to_color[val] # faster on cropped
             rgb[r1:r2, c1:c2] = cropped_rgb
             region_mask[r1:r2, c1:c2] = cropped_labeled==int(region_id)
