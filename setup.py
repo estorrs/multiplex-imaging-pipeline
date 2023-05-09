@@ -45,7 +45,9 @@ setup(
         'rasterio',
         'gensim',
         'squidpy',
-        'imagecodecs'
+        'imagecodecs>=2022.7.27',
+        'torch',
+        'torchvision'
     ],
     include_package_data=True,
 

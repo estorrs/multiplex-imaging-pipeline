@@ -4,6 +4,8 @@ import os
 
 import numpy as np
 import tifffile
+import torchvision.transforms.functional as TF
+import torch
 from ome_types import from_tiff, from_xml, to_xml, model
 from ome_types.model.simple_types import UnitsLength
 from einops import rearrange
@@ -130,9 +132,12 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_ty
         )
         for level in range(subresolutions):
             mag = 2**(level + 1)
-            sampled = rescale(data[..., 0, 0], 1 / mag, preserve_range=True, channel_axis=-1)
-            sampled = sampled.astype(np.uint8)
-            sampled = np.expand_dims(sampled, (-2, -1))
+            x = torch.tensor(rearrange(data[..., 0, 0], 'w h c -> c h w'))
+            sampled = rearrange(
+                TF.resize(x, (int(x.shape[-2] / mag), int(x.shape[-1] / mag)), antialias=True),
+                'c h w -> w h c 1 1'
+            )
+            sampled = sampled.numpy().astype(np.uint8)
             out_tif.write(
                 rearrange(sampled, 'x y c z t -> t c y x z'),
                 subfiletype=1,
@@ -142,7 +147,7 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_ty
         out_tif.overwrite_description(xml_str.encode())
 
 
-def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8', subresolutions=5):
+def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8', subresolutions=4):
     """
     Generate an HTAN compatible ome tiff from qptiff output by codex phenocycler
     """
@@ -150,12 +155,15 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8'
     s = tf.series[0] # full res tiffs are in the first series
     n_channels = s.get_shape()[0]
     shape = s.pages[0].shape
-    subresolutions = 5
+
+    logging.info(f'{n_channels} total markers')
+    logging.info(f'writing as {pixel_type}')
 
     if bbox is None:
         data = np.zeros((shape[1], shape[0], n_channels, 1, 1),
                         dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
     else:
+        logging.info(f'bbox detected: {bbox}')
         data = np.zeros((bbox[3] - bbox[2], bbox[1] - bbox[0], n_channels, 1, 1),
                         dtype=np.uint8 if pixel_type=='uint8' else np.uint16)
     biomarkers = []
@@ -163,19 +171,21 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8'
         img = p.asarray()
         d = tifffile.xml2dict(p.description)['PerkinElmer-QPI-ImageDescription']
         biomarker = d['Biomarker']
+        logging.info(f'loading {biomarker}')
         biomarkers.append(biomarker)
         if bbox is not None:
             r1, r2, c1, c2 = bbox
             img = img[r1:r2, c1:c2]
-        img = img.astype(np.float32)
-        img -= img.min()
-        img /= img.max()
-        if pixel_type == 'uint8':
-            img *= 255
+
+        if pixel_type=='uint8':
             img = img.astype(np.uint8)
         else:
+            img = img.astype(np.float32)
+            img -= img.min()
+            img /= img.max()
             img *= 65535
             img = img.astype(np.uint16) 
+            logging.info('writing as uint16')
 
         data[..., i, 0, 0] = np.swapaxes(img, 0, 1)
 
@@ -210,6 +220,7 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8'
         opts = {
             'compression': 'LZW',
         }
+        logging.info(f'writting full res image')
         out_tif.write(
             rearrange(data, 'x y c z t -> t c y x z'),
             subifds=subresolutions,
@@ -217,9 +228,13 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8'
         )
         for level in range(subresolutions):
             mag = 2**(level + 1)
-            sampled = rescale(data[..., 0, 0], 1 / mag, preserve_range=True, channel_axis=-1)
-            sampled = sampled.astype(np.uint8)
-            sampled = np.expand_dims(sampled, (-2, -1))
+            logging.info(f'writting subres {mag}')
+            x = torch.tensor(rearrange(data[..., 0, 0], 'w h c -> c h w'))
+            sampled = rearrange(
+                TF.resize(x, (int(x.shape[-2] / mag), int(x.shape[-1] / mag)), antialias=True),
+                'c h w -> w h c 1 1'
+            )
+            sampled = sampled.numpy().astype(np.uint8)
             out_tif.write(
                 rearrange(sampled, 'x y c z t -> t c y x z'),
                 subfiletype=1,

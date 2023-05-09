@@ -21,26 +21,25 @@ def listfiles(folder, regex=None):
                 yield os.path.join(root, filename)
 
 
-def extract_ome_tiff(fp, channels=None):   
+def extract_ome_tiff(fp, channels=None, as_dict=True):   
     tif = TiffFile(fp)
     ome = from_xml(tif.ome_metadata)
     im = ome.images[0]
     d = {}
-    img_channels = []
+    img_channels, img_channels, imgs = [], [], []
     for c, p in zip(im.pixels.channels, tif.pages):
-        img_channels.append(c.name)
-
-        if channels is None:
+        if channels is None or c.name in channels:
             img = p.asarray()
             d[c.name] = img
-        elif c.name in channels:
-            img = p.asarray()
-            d[c.name] = img
-
+            imgs.append(img)
+            img_channels.append(c.name)
     if channels is not None and len(set(channels).intersection(set(img_channels))) != len(channels):
         raise RuntimeError(f'Not all channels were found in ome tiff: {channels} | {img_channels}')
+    
+    if as_dict:
+        return d
+    return img_channels, np.asarray(imgs)
 
-    return d
 
 
 def get_ome_tiff_channels(fp):   
@@ -107,11 +106,7 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
         if region_to_bbox is not None:
             r1, c1, r2, c2 = region_to_bbox[region_id]
             cropped_labeled = labeled_img[r1:r2, c1:c2]
-            plt.imshow(cropped_labeled)
-            plt.show()
             cropped_rgb = rgb[r1:r2, c1:c2]
-            plt.imshow(cropped_rgb)
-            plt.show()
             cropped_rgb[cropped_labeled==int(region_id)] = val_to_color[val] # faster on cropped
             rgb[r1:r2, c1:c2] = cropped_rgb
             region_mask[r1:r2, c1:c2] = cropped_labeled==int(region_id)
