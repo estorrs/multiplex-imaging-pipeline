@@ -22,7 +22,7 @@ from shapely import Polygon, Point, STRtree
 from shapely.wkt import dumps
 from rasterio import features
 
-from mip.utils import extract_ome_tiff
+from mip.utils import extract_ome_tiff, R_CHANNEL_MAPPING
 
 DEBUG_DIR = '/diskmnt/Projects/Users/estorrs/sandbox'
 
@@ -629,9 +629,12 @@ def generate_region_metrics(
                           props_dict['expanded']['bbox-3'])}
 
     logging.info('extracting ome.tiff')
+    channel_to_img = extract_ome_tiff(ome_fp)
+    channel_to_img = {R_CHANNEL_MAPPING.get(k, k):v for k, v in channel_to_img.items()}
     total_channels = set(channel_to_thresh_grid.keys())
     total_channels.update(set(channel_to_thresh_pixel.keys()))
-    channel_to_img = extract_ome_tiff(ome_fp, channels=list(total_channels))
+    channel_to_img = {k:v for k, v in channel_to_img.items() if k in total_channels}
+    # channel_to_img = extract_ome_tiff(ome_fp, channels=list(total_channels))
     channels = list(channel_to_img.keys())
     logging.info(f'channels in ome.tiff: {channels}')
     assert next(iter(channel_to_img.values())).shape == labeled_dict['region'].shape

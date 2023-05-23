@@ -11,6 +11,49 @@ from ome_types import from_tiff, from_xml
 from skimage.exposure import rescale_intensity
 
 
+CHANNEL_MAPPING = {
+    'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK'],
+    'E-cadherin': ['E-cadherin'],
+    'CD45': ['CD45 (D)', 'CD45', 'CD45-(D)', 'CD45RO'],
+    'CD8': ['CD8', 'CD8a'],
+    'DAPI': ['DAPI'],
+    'CD4': ['CD4'],
+    'CD3e': ['CD3e', 'CD3'],
+    'Vimentin': ['Vimentin-(D)', 'Vimentin', 'Vimentin (D)'],
+    'SMA': ['SMA-(D)', 'SMA', 'SMA (D)', 'a-SMA (D)'],
+    'CD31': ['CD31'],
+    'CD20': ['CD20-(D)', 'CD20', 'CD20 (D)', 'CD20-Akoya'],
+    'CD68': ['CD68', 'CD68 (D)', 'CD68-(D)'],
+    'CD163': ['CD163'],
+    'FOXP3': ['FoxP3', 'FOXP3', 'Foxp3'],
+    'cKit': ['cKIT (D)', 'cKit (D)', 'cKit', 'cKIT', 'cKIT-(D)'],
+    'MGP': ['MGP', 'MGP (D)', 'MGP-(D)'],
+    'CD36': ['CD36-(D)', 'CD36'],
+    'PR': ['PR', 'PR-(D)'],
+    'ER': ['ER', 'ER-(D)'],
+    'P21': ['P21', 'P21-(D)', 'P21-(D)', 'P21 (D)'],
+    'P16': ['P16-(D)'],
+    'CK5': ['Keratin 5', 'KRT5'],
+    'TFF1': ['TFF1', 'TFF1-(D)'],
+    'beta-integrin': ['beta-integrin', 'beta3-integrin'],
+    'CK14': ['CK14', 'Keratin 14'],
+    'CK17': ['CK17', 'CK17 (D)', 'CK17-(D)', 'Keratin 17'],
+    'CK19': ['CK19', 'CK19 (D)', 'CK19-(D)'],
+    'CD11b': ['CD11b', 'CD11b (D)', 'CD11b-(D)'],
+    'GATA3': ['GATA3', 'GATA3-(D)'],
+    'PLAT/tPA': ['PLAT/tPA', 'PLAT/tPA (D)'],
+    'COX6c': ['COX6c (D)'],
+    'Her2': ['Her2', 'Her2 (D)'],
+    'Bap1': ['Bap1 (D)'],
+    'GLUT1': ['Glut1', 'GLUT1', 'GLUT1-(D)'],
+    'CD11c': ['CD11c'],
+    'HLA-DR': ['HLA-DR'],
+    'Ki67': ['Ki67', 'KI67'],
+    'Podoplanin': ['Podoplanin', 'PDPN']
+}
+R_CHANNEL_MAPPING = {v:k for k, vs in CHANNEL_MAPPING.items() for v in vs}
+
+
 def listfiles(folder, regex=None):
     """Return all files with the given regex in the given folder structure"""
     for root, folders, files in os.walk(folder):
@@ -114,10 +157,10 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
             rgb[labeled_img==int(region_id)] = val_to_color[val]
             region_mask[labeled_img==int(region_id)] = True
 
-    if add_alpha:
-        rgb = np.concatenate((rgb, np.ones((rgb.shape[0], rgb.shape[1], 1))), axis=-1)
-        # rgb[labeled_img==0] = [1., 1., 1., 0.]
-        rgb[~region_mask] = [1., 1., 1., 0.]
+    # if add_alpha:
+    #     rgb = np.concatenate((rgb, np.ones((rgb.shape[0], rgb.shape[1], 1))), axis=-1)
+    #     # rgb[labeled_img==0] = [1., 1., 1., 0.]
+    #     rgb[~region_mask] = [1., 1., 1., 0.]
 
     return rgb
 
