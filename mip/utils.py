@@ -21,7 +21,7 @@ CHANNEL_MAPPING = {
     'CD3e': ['CD3e', 'CD3'],
     'Vimentin': ['Vimentin-(D)', 'Vimentin', 'Vimentin (D)'],
     'SMA': ['SMA-(D)', 'SMA', 'SMA (D)', 'a-SMA (D)'],
-    'CD31': ['CD31'],
+    'CD31': ['CD31', 'CD31-(D)'],
     'CD20': ['CD20-(D)', 'CD20', 'CD20 (D)', 'CD20-Akoya'],
     'CD68': ['CD68', 'CD68 (D)', 'CD68-(D)'],
     'CD163': ['CD163'],
