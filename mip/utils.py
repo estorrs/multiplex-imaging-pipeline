@@ -2,6 +2,7 @@ import os
 import re
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import scanpy as sc
 import seaborn as sns
@@ -12,12 +13,12 @@ from skimage.exposure import rescale_intensity
 
 
 CHANNEL_MAPPING = {
-    'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK'],
+    'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK', 'Pan-CK (D)', 'PanCK (D)'],
     'E-cadherin': ['E-cadherin'],
     'CD45': ['CD45 (D)', 'CD45', 'CD45-(D)', 'CD45RO'],
     'CD8': ['CD8', 'CD8a'],
     'DAPI': ['DAPI'],
-    'CD4': ['CD4'],
+    'CD4': ['CD4', 'CD4 (D)'],
     'CD3e': ['CD3e', 'CD3'],
     'Vimentin': ['Vimentin-(D)', 'Vimentin', 'Vimentin (D)'],
     'SMA': ['SMA-(D)', 'SMA', 'SMA (D)', 'a-SMA (D)'],
@@ -36,11 +37,11 @@ CHANNEL_MAPPING = {
     'CK5': ['Keratin 5', 'KRT5'],
     'TFF1': ['TFF1', 'TFF1-(D)'],
     'beta-integrin': ['beta-integrin', 'beta3-integrin'],
-    'CK14': ['CK14', 'Keratin 14'],
+    'CK14': ['CK14', 'Keratin 14', 'CK14 (D)'],
     'CK17': ['CK17', 'CK17 (D)', 'CK17-(D)', 'Keratin 17'],
     'CK19': ['CK19', 'CK19 (D)', 'CK19-(D)'],
     'CD11b': ['CD11b', 'CD11b (D)', 'CD11b-(D)'],
-    'GATA3': ['GATA3', 'GATA3-(D)'],
+    'GATA3': ['GATA3', 'GATA3-(D)', 'GATA3 (D)'],
     'PLAT/tPA': ['PLAT/tPA', 'PLAT/tPA (D)'],
     'COX6c': ['COX6c (D)'],
     'Her2': ['Her2', 'Her2 (D)'],
@@ -49,7 +50,20 @@ CHANNEL_MAPPING = {
     'CD11c': ['CD11c'],
     'HLA-DR': ['HLA-DR'],
     'Ki67': ['Ki67', 'KI67'],
-    'Podoplanin': ['Podoplanin', 'PDPN']
+    'Podoplanin': ['Podoplanin', 'PDPN', 'Podoplanin (D)'],
+    'CTLA4': ['CTLA4', 'CTLA4 (D)', 'CTLA4-(D)'],
+    'SLC39A6': ['SLC39A6'],
+    'BCA1': ['BCA1'],
+    'BCAL': ['BCAL'],
+    'TUBB3': ['TUBB3', 'TUBB3 (D)'],
+    'PTPRZ1': ['PTPRZ1', 'PTPRZ1 (D)'],
+    'HIF1a': ['HIF1a', 'HIF1a (D)'],
+    'PAI1': ['PAI1', 'PAI1-(D)'],
+    'GFAP': ['GFAP', 'GFAP (D)'],
+    'VEGFA': ['VEGFA', 'VEGFA (D)'],
+    'IBA1': ['IBA1', 'IBA1 (D)'],
+    'OLIG2': ['OLIG2', 'OLIG2 (D)'],
+    'FN1': ['FN1', 'FN1 (D)'],
 }
 R_CHANNEL_MAPPING = {v:k for k, vs in CHANNEL_MAPPING.items() for v in vs}
 
@@ -116,19 +130,23 @@ def display_slide_from_adata(a, x='centroid_col', y='centroid_row_inverted', col
 
 
 def display_region(labeled_img, region_to_value, region_to_bbox,
-                   cmap=None, add_alpha=True, save_fp=None, vmin=None, vmax=None):
+                   cmap=None, add_alpha=True, save_fp=None, vmin=None, vmax=None, cats=None):
     regions, vals = zip(*region_to_value.items())
+    vals_original = np.asarray(vals)
+
+
     try:
         float(vals[0])
         is_numeric = True
         cmap = cmap if cmap is not None else 'viridis'
-        max_val = max(vals) if vmax is None else vmax
-        min_val = min(vals) if vmin is None else vmin
+        pool = [v for v in vals if not pd.isnull(v)] + [0]
+        max_val = np.max(pool) if vmax is None else vmax
+        min_val = np.min(pool) if vmin is None else vmin
         bins = np.linspace(min_val, max_val, 100)
         val_to_color = {b:c for b, c in zip(np.arange(100), sns.color_palette(cmap, n_colors=100))}
     except:
         is_numeric = False
-        cats = sorted(set(vals))
+        cats = sorted(set(vals)) if cats is None else cats
         if cmap is None:
             if len(cats) <= 10:
                 cmap = 'tab10'
@@ -138,11 +156,14 @@ def display_region(labeled_img, region_to_value, region_to_bbox,
             val_to_color = {b:c for b, c in zip(cats, sns.color_palette(cmap))}
         else:
             val_to_color = cmap
+    for val in [np.nan, -1, -1., None]:
+        val_to_color[val] = (.6, .6, .6)
 
     rgb = np.full((labeled_img.shape[0], labeled_img.shape[1], 3), 1., dtype=np.float32)
 
     if is_numeric:
         vals = np.digitize(vals, bins) - 1
+        vals[pd.isnull(vals_original)] = -1
 
     region_mask = np.zeros((labeled_img.shape[0], labeled_img.shape[1]), dtype=bool)
     for region_id, val in zip(regions, vals):

@@ -27,6 +27,18 @@ from mip.utils import extract_ome_tiff, R_CHANNEL_MAPPING
 DEBUG_DIR = '/diskmnt/Projects/Users/estorrs/sandbox'
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 def compute_polsby_popper(area, perimeter):
     try:
         return 4 * math.pi * area / perimeter ** 2

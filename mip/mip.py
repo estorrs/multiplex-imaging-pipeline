@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 import mip.utils as utils
-from mip.ome import generate_ome_from_tifs, generate_ome_from_qptiff
+from mip.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
 from mip.spatial_features import save_spatial_features
 from mip.region_analysis import generate_region_metrics
 
@@ -30,14 +30,14 @@ parser.add_argument('--sep', type=str, default='\n',
 ## make-ome ##
 ##############
 parser.add_argument('--input-tif', type=str,
-    help='Used in make-ome mode. Either directory of stitched tif files that will be combined into a single ome.tiff file (for codex platform), or filepath of a .qptiff (phenocycler platform).')
+    help='Used in make-ome mode. Either directory of stitched tif files that will be combined into a single ome.tiff file, a multichannel .tif (for original codex platform), or a .qptiff (phenocycler platform).')
 
 parser.add_argument('--output-filepath', type=str,
     help='Location to write ome.tiff file')
 
 parser.add_argument('--platform', type=str,
     choices=['codex', 'phenocycler', 'raw'], default='phenocycler',
-    help='Which platform produced the input images. Raw will stitch a directory of .tifs together without and channel name parsing.')
+    help='Which platform produced the input images. phenocycler assumes a .qptiff from the akoya phenocycler platform. codex assumes a multichannel .tif output by the original akoya codex platform. raw will save a directory of .tifs together into a multiplex image.')
 
 parser.add_argument('--bbox', type=str,
     help='If desired, bbox in to crop image with. Must be the following format: "top,bottom,left,right"')
@@ -113,11 +113,21 @@ def run_show_channels(ome_tiff_fp, sep):
     
 
 def run_make_ome(input_tif, output_fp, platform='phenocycler', bbox=None):
+    ext = input_tif.split('.')[-1]
+    if platform == 'phenocycler' and ext != 'qptiff':
+        raise RuntimeError('phenocycler platform option must use .qptiff as input file')
+    if platform == 'codex' and ext != 'tif':
+        raise RuntimeError('codex platform option must use multichannel imagej .tif as input file')
+    if 'ome.tiff' != output_fp[-8:]:
+        raise RuntimeError('output filepath must have .ome.tiff extension')
+
     if bbox is not None and isinstance(bbox, str):
         bbox = [int(x) for x in bbox.split(',')]
-    if platform in ['codex', 'raw']:
+    if platform == 'raw':
         fps = sorted(utils.listfiles(input_tif, regex=r'.tif[f]*$'))
         generate_ome_from_tifs(fps, output_fp, platform=platform, bbox=bbox)
+    elif platform == 'codex':
+        generate_ome_from_codex_imagej_tif(input_tif, output_fp, bbox=bbox)
     elif platform == 'phenocycler':
         generate_ome_from_qptiff(input_tif, output_fp, bbox=bbox)
     logging.info(f'ome.tiff written to {output_fp}')
