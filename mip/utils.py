@@ -210,3 +210,27 @@ def make_pseudo(channel_to_img, cmap=None, contrast_pct=20.):
     stack -= stack.min()
     stack /= stack.max()
     return stack
+
+
+def merge_channels(channel_to_img, channels, thresh=.01, contrast_pct=95.):
+    img = None
+    for c in channels:
+        if c not in channel_to_img:
+            print(f'warning: {c} not in image')
+            pass
+        else:
+            X = channel_to_img[c].copy().astype(np.float32)
+            X -= X.min()
+            X /= X.max()
+            vmax = np.percentile(X[X>0], (contrast_pct)) if np.count_nonzero(X) else 1.
+            X = rescale_intensity(X, in_range=(0., vmax))
+
+            X = np.expand_dims(X, 0)
+
+            if img is None:
+                img = X
+            else:
+                img = np.concatenate((img, X), axis=0)
+
+    img = np.mean(img, axis=0)
+    return img
