@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import tifffile
 
-import mip.utils as utils
-from mip.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
-from mip.spatial_features import save_spatial_features
-from mip.region_analysis import generate_region_metrics
-from mip.segmentation import segment_cells
+import multiplex_imaging_pipeline.utils as utils
+from multiplex_imaging_pipeline.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
+from multiplex_imaging_pipeline.spatial_features import save_spatial_features
+from multiplex_imaging_pipeline.region_analysis import generate_region_metrics
+from multiplex_imaging_pipeline.segmentation import segment_cells
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -23,7 +23,6 @@ parser.add_argument('mode', type=str,
 ###################
 ## show-channels ##
 ###################
-## --ome-tiff
 
 parser.add_argument('--sep', type=str, default='\n',
     help='Seperator between channel names. Defaults to newline character (i.e. channels are displayed on seperate lines)')
@@ -44,11 +43,11 @@ parser.add_argument('--platform', type=str,
 parser.add_argument('--bbox', type=str,
     help='If desired, bbox in to crop image with. Must be the following format: "top,bottom,left,right"')
 
-#################
-## segment-ome ##
-#################
-parser.add_argument('--input-tif', type=str,
-    help='ome.tiff file to segment')
+# #################
+# ## segment-ome ##
+# #################
+# parser.add_argument('--input-tif', type=str,
+#     help='ome.tiff file to segment')
 
 parser.add_argument('--output-prefix', type=str, default='output',
     help='Output prefix to use when writing cell segmentation files. Two files will be written: *_cell_segmentation.tif and *_nuclei_segmentation.tif. Default is "output". For example, if --output-prefix is "path/to/out/directory/sample" then the two output files will be named path/to/out/directory/sample_cell_segmentation.tif and path/to/out/directory/sample_nuclei_segmentation.tif.')
@@ -56,10 +55,10 @@ parser.add_argument('--output-prefix', type=str, default='output',
 parser.add_argument('--split-size', type=int, default=25000,
     help='If image width or height is larger than --split-size, then image will be split into multiple pieces for segmentation and stitched back together. Decrease if running into memory issues.')
 
-parser.add_argument('--nuclei-channels', type=str,
+parser.add_argument('--nuclei-channels', type=str, default='DAPI',
     help='List of nuclei markers to use during segmentation. Must be the following format: "MARKER_NAME,MARKER_NAME,....". Default is "DAPI".')
 
-parser.add_argument('--membrane-channels', type=str,
+parser.add_argument('--membrane-channels', type=str, default='Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,C20',
     help='List of markers to use during membrane segmentation. Must be the following format: "MARKER_NAME,MARKER_NAME,....". Default is "Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,CD20". Note that image marker names are automatically converted using mip.utils.R_CHANNEL_MAPPING')
 
 # ###############################
@@ -189,16 +188,18 @@ def run_generate_region_features():
         parallel_step=args.parallel_step, perp_steps=args.perp_steps,
         expansion=args.expansion, grouping_dist=args.breakage_dist,
         area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
-        channel_to_thresh_grid=channel_to_thresh_grid, channel_to_thresh_pixel=channel_to_thresh_pixel,
+        channel_to_thresh_grid=channel_to_thresh_grid,
+        channel_to_thresh_pixel=channel_to_thresh_pixel,
         min_region_size=args.min_region_size,
         max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
     )
 
 def main():
     if args.mode == 'make-ome':
-        bbox = [int(x) for x in bbox.split(',')] if bbox is not None and isinstance(bbox, str) else None
+        bbox = [int(x) for x in args.bbox.split(',')] if args.bbox is not None and isinstance(
+            args.bbox, str) else None
         make_ome(args.input_tif, args.output_filepath, platform=args.platform, bbox=bbox)
-    if args.mode == 'segment-ome':
+    elif args.mode == 'segment-ome':
         nuclei_markers = args.nuclei_markers.split(',')
         membrane_markers = args.membrane_markers.split(',')
         segment_ome(args.input_tif, args.output_prefix, args.split_size,

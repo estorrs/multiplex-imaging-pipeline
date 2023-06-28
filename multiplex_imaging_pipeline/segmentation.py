@@ -3,7 +3,7 @@ from skimage.morphology import label
 from skimage.measure import regionprops
 from deepcell.applications import Mesmer
 
-from mip.utils import extract_ome_tiff, merge_channels, R_CHANNEL_MAPPING
+from multiplex_imaging_pipeline.utils import extract_ome_tiff, merge_channels, R_CHANNEL_MAPPING
 
 
 APP = Mesmer()

@@ -39,21 +39,16 @@ setup(
         'ome-types',
         'scikit-image',
         'scikit-learn',
-#        'shapely',
-#        'rasterio',
-#        'gensim',
-#        'squidpy',
         'imagecodecs>=2022.7.27',
         'torch',
         'torchvision',
         'deepcell',
-        'omero-py',
     ],
     include_package_data=True,
 
     entry_points={
         'console_scripts': [
-            'mip=mip.mip:main',
+            'mip=multiplex_imaging_pipeline.multiplex_imaging_pipeline:main',
         ],
     },
 )

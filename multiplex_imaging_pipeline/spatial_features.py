@@ -4,7 +4,7 @@ import numpy as np
 import tifffile
 from skimage.measure import regionprops
 
-from mip.utils import extract_ome_tiff
+from multiplex_imaging_pipeline.utils import extract_ome_tiff
 
 
 def get_spatial_features(label_fp, ome_fp):

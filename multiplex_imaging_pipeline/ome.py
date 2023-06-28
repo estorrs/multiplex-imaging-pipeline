@@ -11,7 +11,7 @@ from ome_types.model.simple_types import UnitsLength
 from einops import rearrange
 from skimage.transform import rescale
 
-from mip.utils import listfiles
+from multiplex_imaging_pipeline.utils import listfiles
 
 # an effort to have consistent marker names in all level 2 ome.tiffs
 # getting rid of it for now because it messes with some of the qc

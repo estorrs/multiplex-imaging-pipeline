@@ -1,0 +1,7 @@
+input_tif:
+  class: File
+  path: a/file/path
+membrane_channels: a_string
+nuclei_channels: a_string
+output_prefix: a_string
+split_size: a_int
