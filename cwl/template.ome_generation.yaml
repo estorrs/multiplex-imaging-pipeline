@@ -1,0 +1,6 @@
+bbox: a_string
+input_tif:
+  class: File
+  path: a/file/path
+output_filepath: a_string
+platform: a_string
