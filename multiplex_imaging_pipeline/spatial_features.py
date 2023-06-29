@@ -1,58 +1,64 @@
+import logging
+
 import anndata
 import pandas as pd
 import numpy as np
 import tifffile
+from einops import rearrange
 from skimage.measure import regionprops
 
-from multiplex_imaging_pipeline.utils import extract_ome_tiff
+import multiplex_imaging_pipeline.utils as utils
 
-
-def get_spatial_features(label_fp, ome_fp):
-    label_img = tifffile.imread(label_fp)
-    cell_ids = np.unique(label_img)[1:]
+def generate_feature_table(ome_fp, seg_fp, thresholds=None):
+    logging.info(f'extracting {ome_fp}')
+    channels, imgs = utils.extract_ome_tiff(ome_fp, as_dict=False)
+    assert len(channels) == len(thresholds)
     
-    channel_to_img = extract_ome_tiff(ome_fp)
-    channels = list(channel_to_img.keys())
-    multichannel_img = np.stack([channel_to_img[c] for c in channels], axis=-1)
+    logging.info(f'extracting {seg_fp}')
+    seg = tifffile.imread(seg_fp)
+    if thresholds is not None:
+        thresholds = np.asarray(thresholds) # make sure numpy
+        logging.info(f'thresholds detected: {thresholds}')
+        masks = rearrange(
+            rearrange(imgs, 'c h w -> h w c') > thresholds,
+            'h w c -> c h w')
     
-    props = regionprops(label_img, intensity_image=multichannel_img, )
+    props = regionprops(seg)
+    logging.info(f'num cells: {len(props)}')
     
     data = []
-    columns = ['area', 'perimeter',
-               'bbox_row_min', 'bbox_col_min', 'bbox_row_max', 'bbox_col_max',
-               'centroid_row', 'centroid_col',
-               'eccentricity']
-    columns += [f'{c} intensity max' for c in channels]
-    columns += [f'{c} intensity mean' for c in channels]
-    columns += [f'{c} intensity min' for c in channels]
+    for i, prop in enumerate(props):
+        label = i + 1
+        row = []
+        r1, c1, r2, c2 = prop['bbox']
 
-    for p in props:
-        prop_data = [p.area, p.perimeter,
-                     p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3],
-                     p.centroid[0], p.centroid[1],
-                     p.eccentricity]
-        prop_data += p.intensity_max.tolist()
-        prop_data += p.intensity_mean.tolist()
-        prop_data += p.intensity_min.tolist()
+        area = prop['area']
+        seg_tile = seg[r1:r2, c1:c2]
+        imgs_tile = imgs[..., r1:r2, c1:c2]
+        if thresholds is not None:
+            masks_tile = masks[..., r1:r2, c1:c2]
 
-        data.append(prop_data)
+        cell_mask = seg_tile==label
 
-    df = pd.DataFrame(data=data, columns=columns, index=cell_ids)
-    df.index.name = 'cell_id'
-    
+        row = [label, prop['centroid'][0], prop['centroid'][1], r1, c1, r2, c2, area]
+        for j in range(imgs_tile.shape[0]):
+            img = imgs_tile[j]
+
+            if thresholds is not None:
+                mask = masks_tile[j]
+                counts = (cell_mask & mask).sum()
+                row.append(counts / area)
+            
+            intensity = img[cell_mask].mean()
+            row.append(intensity)
+
+        data.append(row)
+
+    cols = ['label', 'row', 'col', 'bbox-r1', 'bbox-c1', 'bbox-r2', 'bbox-c2', 'area']
+    for c in channels:
+        converted = utils.R_CHANNEL_MAPPING.get(c, c)
+        roots = ['fraction', 'intensity'] if thresholds is not None else ['intensity']
+        for identifier in roots:
+            cols.append(f'{converted}_{identifier}')
+    df = pd.DataFrame(data=data, columns=cols)
     return df
-
-
-def save_spatial_features(label_fp, ome_fp, output_prefix):
-    df = get_spatial_features(label_fp, ome_fp)
-    
-    adata = anndata.AnnData(
-        X=df[[c for c in df.columns if 'intensity mean' in c]].values,
-        obs=df[[c for c in df.columns if 'intensity mean' not in c]],
-        var=pd.DataFrame(index=[c.replace(' intensity mean', '')
-                                for c in df.columns if 'intensity mean' in c]))
-    # for some reason needs this to make sure it saves correctly
-    adata.var['marker'] = adata.var.index.to_list()
-    
-    df.to_csv(f'{output_prefix}.txt', sep='\t')
-    adata.write_h5ad(f'{output_prefix}.h5ad')

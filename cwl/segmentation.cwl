@@ -4,8 +4,7 @@ arguments:
 - position: 1
   valueFrom: segment-ome
 baseCommand:
-- python
-- /multiplex-imaging-pipeline/mip/mip.py
+- mip
 class: CommandLineTool
 cwlVersion: v1.0
 id: mesmer_segmentation
