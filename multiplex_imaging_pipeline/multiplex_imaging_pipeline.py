@@ -192,7 +192,7 @@ def segment_ome(input_tif, output_prefix, split_size, nuclei_markers, membrane_m
 #         channel_to_thresh_pixel=channel_to_thresh_pixel,
 #         min_region_size=args.min_region_size,
 #         max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
-    )
+    # )
 
 def main():
     if args.mode == 'make-ome':
