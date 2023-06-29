@@ -7,8 +7,8 @@ import tifffile
 
 import multiplex_imaging_pipeline.utils as utils
 from multiplex_imaging_pipeline.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
-from multiplex_imaging_pipeline.spatial_features import save_spatial_features
-from multiplex_imaging_pipeline.region_analysis import generate_region_metrics
+# from multiplex_imaging_pipeline.spatial_features import save_spatial_features
+# from multiplex_imaging_pipeline.region_analysis import generate_region_metrics
 from multiplex_imaging_pipeline.segmentation import segment_cells
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -163,35 +163,35 @@ def segment_ome(input_tif, output_prefix, split_size, nuclei_markers, membrane_m
     tifffile.imwrite(f'{output_prefix}_cell_segmentation.tif', labeled_cells, compression='LZW')
 
 
-def run_generate_spatial_features(label_fp, ome_fp, output_prefix='output'):
-    save_spatial_features(label_fp, ome_fp, output_prefix=output_prefix)
-    logging.info(f'spatial features written to {output_prefix}')
+# def run_generate_spatial_features(label_fp, ome_fp, output_prefix='output'):
+#     save_spatial_features(label_fp, ome_fp, output_prefix=output_prefix)
+#     logging.info(f'spatial features written to {output_prefix}')
 
 
-def run_generate_region_features():
-    df = pd.read_csv(args.spatial_features, sep='\t', index_col=0)
-    metadata_cols = list(df.columns[2:])
-    cols = ['x', 'y']
-    cols += metadata_cols
-    df.columns = cols
+# def run_generate_region_features():
+#     df = pd.read_csv(args.spatial_features, sep='\t', index_col=0)
+#     metadata_cols = list(df.columns[2:])
+#     cols = ['x', 'y']
+#     cols += metadata_cols
+#     df.columns = cols
 
-    channel_df = pd.read_csv(args.channel_thresholds_grid, sep='\t')
-    channel_to_thresh_grid = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
+#     channel_df = pd.read_csv(args.channel_thresholds_grid, sep='\t')
+#     channel_to_thresh_grid = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
 
-    channel_df = pd.read_csv(args.channel_thresholds_pixel, sep='\t')
-    channel_to_thresh_pixel = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
+#     channel_df = pd.read_csv(args.channel_thresholds_pixel, sep='\t')
+#     channel_to_thresh_pixel = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
  
-    generate_region_metrics(
-        df, args.ome_tiff, args.regions_mask, args.output_dir,
-        y_col='y', x_col='x', cell_metadata_cols=metadata_cols,
-        boundary_dist=args.boundary_dist,
-        parallel_step=args.parallel_step, perp_steps=args.perp_steps,
-        expansion=args.expansion, grouping_dist=args.breakage_dist,
-        area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
-        channel_to_thresh_grid=channel_to_thresh_grid,
-        channel_to_thresh_pixel=channel_to_thresh_pixel,
-        min_region_size=args.min_region_size,
-        max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
+#     generate_region_metrics(
+#         df, args.ome_tiff, args.regions_mask, args.output_dir,
+#         y_col='y', x_col='x', cell_metadata_cols=metadata_cols,
+#         boundary_dist=args.boundary_dist,
+#         parallel_step=args.parallel_step, perp_steps=args.perp_steps,
+#         expansion=args.expansion, grouping_dist=args.breakage_dist,
+#         area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
+#         channel_to_thresh_grid=channel_to_thresh_grid,
+#         channel_to_thresh_pixel=channel_to_thresh_pixel,
+#         min_region_size=args.min_region_size,
+#         max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
     )
 
 def main():
