@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 from skimage.morphology import label
 from skimage.measure import regionprops
@@ -75,16 +77,16 @@ def segment_cells(
                                       np.zeros_like(nuclei, dtype=np.int32))
         nrows = nuclei.shape[-2] // (split_size - overlap_padding) + 1
         ncols = nuclei.shape[-1] // (split_size - overlap_padding) + 1
-        print(f'spliting into nrows: {nrows}, ncols: {ncols}')
+        logging.info(f'spliting into nrows: {nrows}, ncols: {ncols}')
         for r in range(nrows):
             r1 = r * (split_size - overlap_padding)
             r2 = r1 + split_size
             for c in range(ncols):
-                print(r, c)
+                logging.info(f'{r} {c}')
                 c1 = c * (split_size - overlap_padding)
                 c2 = c1 + split_size
                 if r1 < nuclei.shape[-2] and c1 < nuclei.shape[-1]:
-                    print(r1, r2, c1, c2)
+                    logging.info(f'window: {r1}, {r2}, {c1}, {c2}')
                     input_img = np.concatenate(
                         (np.expand_dims(nuclei[r1:r2, c1:c2], axis=-1),
                          np.expand_dims(membrane[r1:r2, c1:c2], axis=-1)), axis=-1)

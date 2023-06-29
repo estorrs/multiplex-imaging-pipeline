@@ -200,15 +200,15 @@ def main():
             args.bbox, str) else None
         make_ome(args.input_tif, args.output_filepath, platform=args.platform, bbox=bbox)
     elif args.mode == 'segment-ome':
-        nuclei_markers = args.nuclei_markers.split(',')
-        membrane_markers = args.membrane_markers.split(',')
+        nuclei_markers = args.nuclei_channels.split(',')
+        membrane_markers = args.membrane_channels.split(',')
         segment_ome(args.input_tif, args.output_prefix, args.split_size,
                  nuclei_markers=nuclei_markers, membrane_markers=membrane_markers)
-    elif args.mode == 'generate-spatial-features':
-        run_generate_spatial_features(
-            args.label_image, args.ome_tiff, output_prefix=args.output_prefix)
-    elif args.mode == 'generate-region-features':
-        run_generate_region_features()
+    # elif args.mode == 'generate-spatial-features':
+    #     run_generate_spatial_features(
+    #         args.label_image, args.ome_tiff, output_prefix=args.output_prefix)
+    # elif args.mode == 'generate-region-features':
+    #     run_generate_region_features()
     elif args.mode == 'show-channels':
         run_show_channels(args.ome_tiff, args.sep)
     else:
