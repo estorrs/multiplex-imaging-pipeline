@@ -1,0 +1,7 @@
+input_tif:
+  class: File
+  path: a/file/path
+labeled_image:
+  class: File
+  path: a/file/path
+output_prefix: a_string

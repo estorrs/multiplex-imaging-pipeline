@@ -1,0 +1,1 @@
+mip make-ome --platform codex --input-tif /diskmnt/Projects/Users/estorrs/multiplex_data/codex/htan/brca/HT206B1-H1/level_2/20220106_HT206B1_H1_A1\ and\ A4_reg001.tif --output-filepath test.ome.tiff --bbox "5000,7000,5000,7000"
