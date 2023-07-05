@@ -8,7 +8,7 @@ import tifffile
 import multiplex_imaging_pipeline.utils as utils
 from multiplex_imaging_pipeline.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
 from multiplex_imaging_pipeline.spatial_features import get_spatial_features
-# from multiplex_imaging_pipeline.region_analysis import generate_region_metrics
+from multiplex_imaging_pipeline.region_features import get_region_features
 from multiplex_imaging_pipeline.segmentation import segment_cells
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -16,7 +16,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('mode', type=str,
-    choices=['make-ome', 'segment-ome', 'generate-spatial-features', 'show-channels'],
+    choices=['make-ome', 'segment-ome', 'generate-spatial-features', 'generate-region-features', 'show-channels'],
     help='Which task mip is to execute.')
 
 
@@ -76,53 +76,23 @@ parser.add_argument('--labeled-image', type=str,
 parser.add_argument('--thresholds', type=str,
     help='Filepath to tab-seperated .txt file containing marker threshold values. The file should have two columns in the following order: <marker>\t<theshold>. Do not include column names/headers in the file.')
 
-# ###############################
-# ## generate-region-features ##
-# ###############################
-# parser.add_argument('--spatial-features', type=str,
-#     help='Filepath of a tab-seperated .txt file with columns specifying coordinates cell annotations in slide. First column is cell ID, second and third columns are treated as "x" and "y" coordinates respectively. All following columns are treated as cell metadata features and seperate fractions/metrics will be generated for each feature.')
+###############################
+## generate-region-features ##
+###############################
+# parser.add_argument('--input-tif', type=str,
+#     help='ome.tiff file to generate spatial features for')
 
-# parser.add_argument('--regions-mask', type=str,
-#     help='Filepath of region mask that will be used when calculating metrics. Mask should be a .tif file and the same height and width as --ome-tiff.')
+# parser.add_argument('--output-prefix', type=str, default='output',
+#     help='Output prefix to use when writing output files. Two files will be written: *_spatial_features.h5ad and *_spatial_features.txt. Default is "output". For example, if --output-prefix is "path/to/out/directory/sample" then the two output files will be named path/to/out/directory/sample_spatial_features.h5ad and path/to/out/directory/sample_spatial_features.txt.')
 
-# parser.add_argument('--channel-thresholds-grid', type=str,
-#     help='Filepath of tab-seperated .txt file where the first column is a channel name in the --ome-tiff and the second column is threshold values to use when determining positive grid polygons.')
+parser.add_argument('--mask-tif', type=str,
+    help='Filepath of region mask tif.')
 
-# parser.add_argument('--channel-thresholds-pixel', type=str,
-#     help='Filepath of tab-seperated .txt file where the first column is a channel name in the --ome-tiff and the second column is threshold values to use when determining positive pixels when generating region metrics.')
+parser.add_argument('--mask-markers', type=str, default='Pan-Cytokeratin,E-cadherin',
+    help='If --mask-tif is not provided, these markers will be used to generate a region mask.')
 
-# parser.add_argument('--output-dir', type=str, default='output',
-#     help='Location to write generate-region-features output files.')
-
-# parser.add_argument('--boundary-dist', type=int, default=150,
-#     help='Distance (in pixels) to draw boundary around each region.')
-
-# parser.add_argument('--perp-steps', type=int, default=10,
-#     help='Number of arcs to generate for region grid when drawing grid polygons.')
-
-# parser.add_argument('--expansion', type=int, default=40,
-#     help='Distance (in pixels) of innermost arc to outermost arc.')
-
-# parser.add_argument('--parallel-step', type=int, default=50,
-#     help='Step size (in pixels) of steps along arcs to use when drawing grid polygons.')
-
-# parser.add_argument('--breakage-dist', type=int, default=10,
-#     help='Distance (in pixels) along innermost arc to use when drawing breakage lines.')
-
-# parser.add_argument('--area_thresh', type=int, default=2000,
-#     help='Filter out grid polygons with area greater than area-thresh.')
-
-# parser.add_argument('--breakage-line-thresh', type=int, default=100,
-#     help='Filter out grid polygons with area greater than area-thresh.')
-
-# parser.add_argument('--min-region-size', type=int,
-#     help='Skip regions below --min-region-size when calculating metrics.')
-
-# parser.add_argument('--max-region-size', type=int,
-#     help='Skip regions over --max-region-size when calculating metrics. Helps speed up runs for debugging purposes since there are non-linear increases in runtime with region size.')
-
-# parser.add_argument('--skip-grid-metrics', action='store_true',
-#     help='If --slip-grid-metrics, then do not calculate polygon-mesh related metrics and only calculate basic region metrics.')
+parser.add_argument('--spatial-features', type=str,
+    help='Filepath to .h5ad file output by generate-spatial-features.')
 
 
 args = parser.parse_args()
@@ -173,37 +143,24 @@ def run_generate_spatial_features(labeled_fp, ome_fp, output_prefix='output', th
     else:
         thresholds = None
     df, a = get_spatial_features(labeled_fp, ome_fp, output_prefix=output_prefix, thresholds=thresholds)
-    logging.info(f'spatial features written to {output_prefix}.h5ad')
-    a.write_h5ad(f'{output_prefix}.h5ad')
-    logging.info(f'spatial features written to {output_prefix}.txt')
-    df.to_csv(f'{output_prefix}.txt', sep='\t', index=False)
+    logging.info(f'spatial features written to {output_prefix}_spatial_features.h5ad')
+    a.write_h5ad(f'{output_prefix}_spatial_features.h5ad')
+    logging.info(f'spatial features written to {output_prefix}_spatial_features.txt')
+    df.to_csv(f'{output_prefix}_spatial_features.txt', sep='\t', index=False)
 
 
-# def run_generate_region_features():
-#     df = pd.read_csv(args.spatial_features, sep='\t', index_col=0)
-#     metadata_cols = list(df.columns[2:])
-#     cols = ['x', 'y']
-#     cols += metadata_cols
-#     df.columns = cols
+def run_generate_region_features():
+    combined, labeled_dict = get_region_features(
+        args.spatial_features, args.input_tif, mask_fp=args.mask_tif,
+        mask_markers=args.mask_markers.split(','))
 
-#     channel_df = pd.read_csv(args.channel_thresholds_grid, sep='\t')
-#     channel_to_thresh_grid = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
+    logging.info(f'writing region features table to {args.output_prefix}_region_features.txt')
+    combined.to_csv(f'{args.output_prefix}_region_features.txt', sep='\t', index=False)
 
-#     channel_df = pd.read_csv(args.channel_thresholds_pixel, sep='\t')
-#     channel_to_thresh_pixel = {c:t for c, t in zip(channel_df.iloc[:, 0], channel_df.iloc[:, 1])}
- 
-#     generate_region_metrics(
-#         df, args.ome_tiff, args.regions_mask, args.output_dir,
-#         y_col='y', x_col='x', cell_metadata_cols=metadata_cols,
-#         boundary_dist=args.boundary_dist,
-#         parallel_step=args.parallel_step, perp_steps=args.perp_steps,
-#         expansion=args.expansion, grouping_dist=args.breakage_dist,
-#         area_thresh=args.area_thresh, group_line_thresh=args.breakage_line_thresh,
-#         channel_to_thresh_grid=channel_to_thresh_grid,
-#         channel_to_thresh_pixel=channel_to_thresh_pixel,
-#         min_region_size=args.min_region_size,
-#         max_region_size=args.max_region_size, calculate_grid_metrics=not args.skip_grid_metrics
-    # )
+    logging.info(f'writing region masks to {args.output_prefix}_*.tif')
+    for name, img in labeled_dict.items():
+        tifffile.imwrite(f'{args.output_prefix}_{name}_mask.tif', img, compression='LZW')
+
 
 def main():
     if args.mode == 'make-ome':
@@ -218,8 +175,8 @@ def main():
     elif args.mode == 'generate-spatial-features':
         run_generate_spatial_features(
             args.labeled_image, args.input_tif, output_prefix=args.output_prefix)
-    # elif args.mode == 'generate-region-features':
-    #     run_generate_region_features()
+    elif args.mode == 'generate-region-features':
+        run_generate_region_features()
     elif args.mode == 'show-channels':
         run_show_channels(args.ome_tiff, args.sep)
     else:
