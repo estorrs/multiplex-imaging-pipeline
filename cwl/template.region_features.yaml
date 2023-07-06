@@ -1,0 +1,11 @@
+input_tif:
+  class: File
+  path: a/file/path
+mask_markers: a_string
+mask_tif:
+  class: File
+  path: a/file/path
+output_prefix: a_string
+spatial_features:
+  class: File
+  path: a/file/path
