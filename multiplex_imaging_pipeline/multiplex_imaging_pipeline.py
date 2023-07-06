@@ -178,7 +178,7 @@ def main():
     elif args.mode == 'generate-region-features':
         run_generate_region_features()
     elif args.mode == 'show-channels':
-        run_show_channels(args.ome_tiff, args.sep)
+        run_show_channels(args.input_tif, args.sep)
     else:
         raise RuntimeError(f'{args.mode} is not a valid mode.')
     

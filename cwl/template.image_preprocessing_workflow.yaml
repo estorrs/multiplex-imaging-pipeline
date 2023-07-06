@@ -1,15 +1,10 @@
 bbox: a_string
-dataset: a_string
-filepath:
-  class: File
-  path: a/file/path
 group: a_string
 host: a_string
-image_id: a_string
-image_name: a_string
 input_tif:
   class: File
   path: a/file/path
 platform: a_string
 port: a_string
 project: a_string
+specimen_id: a_string
