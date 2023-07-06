@@ -19,6 +19,11 @@ inputs:
     position: '0'
     prefix: --labeled-image
   type: File
+- id: thresholds
+  inputBinding:
+    position: '0'
+    prefix: --thresholds
+  type: File?
 - default: output
   id: output_prefix
   inputBinding:

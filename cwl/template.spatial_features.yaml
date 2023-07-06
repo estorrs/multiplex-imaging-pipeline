@@ -5,3 +5,6 @@ labeled_image:
   class: File
   path: a/file/path
 output_prefix: a_string
+thresholds:
+  class: File
+  path: a/file/path
