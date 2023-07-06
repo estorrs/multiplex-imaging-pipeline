@@ -1,0 +1,3 @@
+[submodule "submodules/omero-wrapper"]
+	path = submodules/omero-wrapper
+	url = https://github.com/estorrs/omero-wrapper

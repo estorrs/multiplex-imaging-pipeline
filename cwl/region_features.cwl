@@ -45,6 +45,10 @@ outputs:
   outputBinding:
     glob: '*.txt'
   type: File
+- id: region_mask
+  outputBinding:
+    glob: '*region_mask.tif'
+  type: File
 requirements:
 - class: DockerRequirement
   dockerPull: estorrs/multiplex-imaging-pipeline:0.0.1
