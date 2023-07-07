@@ -49,6 +49,9 @@ outputs:
 - id: spatial_features_h5ad
   outputSource: image_processing_to_thresholds/spatial_features_h5ad
   type: File
+- id: cell_type_image
+  outputSource: image_processing_to_thresholds/cell_type_image
+  type: File
 - id: region_features_txt
   outputSource: image_processing_to_thresholds/region_features_txt
   type: File
@@ -107,4 +110,5 @@ steps:
   - id: spatial_features_h5ad
   - id: region_features_txt
   - id: labeled_regions
+  - id: cell_type_image
   run: image_processing_no_thresholds_workflow.cwl

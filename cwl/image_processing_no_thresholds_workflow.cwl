@@ -43,6 +43,9 @@ outputs:
 - id: spatial_features_h5ad
   outputSource: generate_spatial_features/output_h5ad
   type: File
+- id: cell_type_image
+  outputSource: generate_spatial_features/cell_type_image
+  type: File
 - id: region_features_txt
   outputSource: generate_region_features/output_txt
   type: File
@@ -114,6 +117,7 @@ steps:
   out:
   - id: output_txt
   - id: output_h5ad
+  - id: cell_type_image
   run: spatial_features.cwl
 - id: generate_region_features
   in:

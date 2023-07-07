@@ -9,7 +9,11 @@ import seaborn as sns
 import tifffile
 from tifffile import TiffFile
 from ome_types import from_tiff, from_xml
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from skimage.exposure import rescale_intensity
+from skimage.segmentation import find_boundaries
+
 
 
 CHANNEL_MAPPING = {
@@ -234,3 +238,51 @@ def merge_channels(channel_to_img, channels, thresh=.01, contrast_pct=95.):
 
     img = np.mean(img, axis=0)
     return img
+
+
+def color_regions(labeled, label_to_annotation, label_to_bbox, mapping):
+    rgba = np.zeros((labeled.shape[0], labeled.shape[1], 4))
+    for label, annot in label_to_annotation.items():
+        color = mapping[annot]
+        r1, r2, c1, c2 = label_to_bbox[label]
+        
+        rgba[r1:r2, c1:c2][labeled[r1:r2, c1:c2]==label] = color
+        
+        bounds = find_boundaries(labeled[r1:r2, c1:c2]==label, mode='thick')
+        
+        rgba[r1:r2, c1:c2][bounds] = [.85, .85, .85, 1.]
+    
+    return rgba
+
+
+def save_annotated_rgba(labeled_img, adata, filepath, figsize=(10, 10), dpi=300):
+    label_to_annotation = {int(l):annot
+                           for l, annot in zip(adata.obs.index, adata.obs['cell_type'])}
+    label_to_bbox = {int(l):(r1, r2, c1, c2) for l, r1, r2, c1, c2 in zip(
+        adata.obs.index, adata.obs['bbox-r1'], adata.obs['bbox-r2'],
+        adata.obs['bbox-c1'], adata.obs['bbox-c2'])}
+    mapping = {annot:c + (1.,)
+            for annot, c in zip(
+                sorted(set(label_to_annotation.values())), sns.color_palette('tab20'))}
+
+    rgba = color_regions(labeled_img, label_to_annotation, label_to_bbox, mapping)
+    mosaic = [
+        ['a', 'a', 'a', 'a', 'b'],
+        ['a', 'a', 'a', 'a', 'b'],
+        ['a', 'a', 'a', 'a', 'b'],
+        ['a', 'a', 'a', 'a', 'b'],
+    ]
+    fig, axs = plt.subplot_mosaic(mosaic, layout='constrained', figsize=figsize)
+    for name, ax in axs.items():
+        ax.axis('off')
+
+    ax = axs['a']
+    ax.imshow(rgba)
+
+    ax = axs['b']
+    custom = [Line2D([0], [0], marker='s', color=(.85, .85, .85), label=label,
+                    markerfacecolor=color, markersize=10, linestyle='')
+            for label, color in mapping.items()]
+    ax.legend(handles=custom, loc='center')
+
+    plt.savefig(filepath, dpi=dpi)

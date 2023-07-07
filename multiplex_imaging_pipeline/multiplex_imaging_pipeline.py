@@ -148,6 +148,10 @@ def run_generate_spatial_features(labeled_fp, ome_fp, output_prefix='output', th
     logging.info(f'spatial features written to {output_prefix}_spatial_features.txt')
     df.to_csv(f'{output_prefix}_spatial_features.txt', sep='\t', index=False)
 
+    logging.info(f'saving annotated cell segmentation image to {output_prefix}_annotated_cell_types.png')
+    fp = f'{output_prefix}_annotated_cell_types.png'
+    utils.save_annotated_rgba(tifffile.imread(labeled_fp), a, fp, figsize=(10, 10), dpi=300)
+
 
 def run_generate_region_features():
     combined, labeled_dict = get_region_features(

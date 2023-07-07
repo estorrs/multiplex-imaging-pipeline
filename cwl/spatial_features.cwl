@@ -43,6 +43,10 @@ outputs:
   outputBinding:
     glob: '*.h5ad'
   type: File
+- id: cell_type_image
+  outputBinding:
+    glob: '*.png'
+  type: File
 requirements:
 - class: DockerRequirement
   dockerPull: estorrs/multiplex-imaging-pipeline:0.0.1
