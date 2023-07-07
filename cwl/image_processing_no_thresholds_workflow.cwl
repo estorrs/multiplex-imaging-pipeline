@@ -119,6 +119,26 @@ steps:
   - id: output_h5ad
   - id: cell_type_image
   run: spatial_features.cwl
+- id: upload_cell_image
+  in:
+  - id: dataset
+    source: specimen_id
+  - id: image_name
+    source: specimen_id
+    valueFrom: $(self)_cell_type_image
+  - id: group
+    source: group
+  - id: project
+    source: project
+  - id: port
+    source: port
+  - id: host
+    source: host
+  - id: filepath
+    source: generate_spatial_features/cell_type_image
+  label: upload_cell_image
+  out: []
+  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl
 - id: generate_region_features
   in:
   - id: input_tif

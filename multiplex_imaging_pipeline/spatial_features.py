@@ -43,14 +43,16 @@ DEFAULT_GATING_STRATEGY = [
     {
         'name': 'CD8 T cell',
         'strategy': [
-#             {'channel': 'CD3e', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'pos'},
+            {'channel': 'CD3e', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'pos'},
             {'channel': 'CD8', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'pos'}
         ],
     },
     {
         'name': 'B cell',
         'strategy': [
-            {'channel': 'CD20', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'pos'}
+            {'channel': 'CD20', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'pos'},
+            {'channel': 'Pan-Cytokeratin', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'neg'},
+            {'channel': 'E-cadherin', 'value': DEFAULT_PIXEL_FRACTION, 'direction': 'neg'},
         ],
     },
     {
