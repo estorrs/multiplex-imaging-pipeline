@@ -202,7 +202,7 @@ def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
                 val = default_threshold
 
             x = df[f'{channel}_{key}'].to_list()[0] if f'{channel}_{key}' in df.columns else 0
-            if pd.isnull(x):
+            if pd.isnull(x) or f'{channel}_{key}' not in df.columns:
                 if len(d) == 1:
                     m = np.ones_like(mask, dtype=np.bool)
                 else:
