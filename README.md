@@ -17,7 +17,7 @@ pip install multiplex-imaging-pipeline
 mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-filepath OUTPUT_FILEPATH
 ```
 
-###### Arguments
+##### Arguments
 + --input-tif
   + Input tif or directory of tifs to be converted into HTAN compatible ome.tiff format. Default is "phenocycler". If --platform is "phenocycler", then a file with a .qptiff extension output by the phenocycler platform is expected. If --platform is "codex", then a multichannel imagej .tif output by the first-generation codex machine is expected. If --platform is "raw" then a directory of tifs is expected, where the images will be combined into a multichannel .ome.tiff and the channel names will be named based on the files (for example if one of the files is named protein1.tif, then that channel in the ome.tiff will be named protein1).
 
@@ -30,7 +30,7 @@ mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-file
 + --output-filepath
   + Where to write output .ome.tiff. Default is output.ome.tiff.
  
-###### Examples
+##### Examples
 
 **Making an ome.tiff from a phenocycler .qptiff file**
 
@@ -62,7 +62,7 @@ mip make-ome --input-tif /path/to/dir/of/tifs/ --platform raw --output-filepath 
 mip segment-ome --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --split-size SPLIT_SIZE --nuclei-channels NUCLEI_CHANNELS --membrane-channels MEMBRANE_CHANNELS
 ```
 
-###### Arguments
+##### Arguments
 
 + --input-tif
   + Path to ome.tiff to be segmented.
@@ -79,7 +79,7 @@ mip segment-ome --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --split-size
 + --membrane-channels
   + Which channels in --input-tif to use for membrane segmentation. If multiple channels are provided, then those channels are merged into a single image that is used for segmentation. Channels are provided as a string in the following format: "channel1,channel2,.....,channelz". Default is "Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,C20". Note: if channel is not in image, than it is attempted to be converted to a more standard name using the CHANNEL_MAPPING [here](https://github.com/estorrs/multiplex-imaging-pipeline/blob/main/multiplex_imaging_pipeline/utils.py#L19).
 
-###### Examples
+##### Examples
 
 **Segmentation of ome.tiff using default parameters**
 
@@ -93,87 +93,90 @@ mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output
 mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output --nuclei-markers "DAPI" --membrane-markers "Pan-Cytokeratin,E-cadherin,Vimentin".
 ```
 
+### generation of spatial features
 
+```bash
+mip generate-spatial-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --labeled-image LABELED_IMAGE --gating-strategy GATING_STRATEGY --thresholds THRESHOLDS
+```
 
-parser.add_argument('mode', type=str,
-    choices=['make-ome', 'segment-ome', 'generate-spatial-features', 'generate-region-features', 'show-channels'],
-    help='Which task mip is to execute.')
+##### Arguments
 
++ --input-tif
+  + Path to ome.tiff to be quantified. Should match --labeled-image segmentation result.
 
-###################
-## show-channels ##
-###################
++ --output-prefix
+  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Three files will be written by segment-ome: 1) {OUTPUT_PREFIX}_spatial_features.h5ad and 2) {OUTPUT_PREFIX}_spatial_features.txt, and 3) {OUPUT_PREFIX}_annotated_cell_types.png. spatial_features.* files contain feature tables describing cell morphology, marker intensities (raw and normalized), positive pixel fractions (if --thresholds is specified), and cell type (based on --gating-strategy). annotated_cell_types.png is an image of cell boundaries colored by cell type annotation.
 
-parser.add_argument('--sep', type=str, default='\n',
-    help='Seperator between channel names. Defaults to newline character (i.e. channels are displayed on seperate lines)')
++ --labeled-image
+  + Labeled .tif file containing cell segmentation information used when generating spatial features. In the labeled .tif files, pixels belong to a cell will have that cells integer ID, background pixels have a value of zero.
+ 
++ --gating-strategy
+  + A .yaml file specifying the gating strategy to use when identifying cell types. By default, the gating strategy [here](https://github.com/estorrs/multiplex-imaging-pipeline/blob/main/multiplex_imaging_pipeline/spatial_features.py#L15) will be used.
+ 
++ --thresholds
+  + If provided, the given manually defined thresholds will be used to calculate "positive pixel fraction" for specified markers, which is the % of positive pixels for that marker in a given cell. Useful when cell typing and wanting to be certain about eliminating batch effects. --thresholds is a tab-seperated .txt file where the first column is a channel name, and the second is the value to use as a threshold (i.e. pixels with an intensity above this threshold will be considered positive). No header should be included in the file.
+ 
+##### Examples
 
-##############
-## make-ome ##
-##############
-parser.add_argument('--input-tif', type=str,
-    help='Used in make-ome mode. Either directory of stitched tif files that will be combined into a single ome.tiff file, a multichannel .tif (for original codex platform), or a .qptiff (phenocycler platform).')
+**Spatial feature generation using default parameters**
 
-parser.add_argument('--output-filepath', type=str,
-    help='Location to write ome.tiff file')
+```bash
+mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output
+```
 
-parser.add_argument('--platform', type=str,
-    choices=['codex', 'phenocycler', 'raw'], default='phenocycler',
-    help='Which platform produced the input images. phenocycler assumes a .qptiff from the akoya phenocycler platform. codex assumes a multichannel .tif output by the original akoya codex platform. raw will save a directory of .tifs together into a multiplex image.')
+**Spatial feature generation using custom gating strategy**
 
-parser.add_argument('--bbox', type=str,
-    help='If desired, bbox in to crop image with. Must be the following format: "top,bottom,left,right"')
+```bash
+mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output --gating-strategy /path/to/file.yaml
+```
 
-# #################
-# ## segment-ome ##
-# #################
-# parser.add_argument('--input-tif', type=str,
-#     help='ome.tiff file to segment')
+**Spatial feature generation using thresholds file**
 
-parser.add_argument('--output-prefix', type=str, default='output',
-    help='Output prefix to use when writing cell segmentation files. Two files will be written: *_cell_segmentation.tif and *_nuclei_segmentation.tif. Default is "output". For example, if --output-prefix is "path/to/out/directory/sample" then the two output files will be named path/to/out/directory/sample_cell_segmentation.tif and path/to/out/directory/sample_nuclei_segmentation.tif.')
+```bash
+mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output --thresholds /path/to/file.txt
+```
 
-parser.add_argument('--split-size', type=int, default=25000,
-    help='If image width or height is larger than --split-size, then image will be split into multiple pieces for segmentation and stitched back together. Decrease if running into memory issues.')
+### generation of region features
 
-parser.add_argument('--nuclei-channels', type=str, default='DAPI',
-    help='List of nuclei markers to use during segmentation. Must be the following format: "MARKER_NAME,MARKER_NAME,....". Default is "DAPI".')
+```bash
+mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --spatial-features SPATIAL_FEATURES --mask-tif MASK_TIF --mask-markers MASK_MARKERS
+```
 
-parser.add_argument('--membrane-channels', type=str, default='Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,C20',
-    help='List of markers to use during membrane segmentation. Must be the following format: "MARKER_NAME,MARKER_NAME,....". Default is "Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,CD20". Note that image marker names are automatically converted using mip.utils.R_CHANNEL_MAPPING')
+##### Arguments
 
-###############################
-## generate-spatial-features ##
-###############################
-# parser.add_argument('--input-tif', type=str,
-#     help='ome.tiff file to generate spatial features for')
++ --input-tif
+  + Path to ome.tiff to be segmented.
 
-# parser.add_argument('--output-prefix', type=str, default='output',
-#     help='Output prefix to use when writing output files. Two files will be written: *_spatial_features.h5ad and *_spatial_features.txt. Default is "output". For example, if --output-prefix is "path/to/out/directory/sample" then the two output files will be named path/to/out/directory/sample_spatial_features.h5ad and path/to/out/directory/sample_spatial_features.txt.')
++ --output-prefix
+  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Three files will be written by segment-ome: 1) {OUTPUT_PREFIX}_spatial_features.h5ad and 2) {OUTPUT_PREFIX}_spatial_features.txt, and 3) {OUPUT_PREFIX}_annotated_cell_types.png. spatial_features.* files contain feature tables describing cell morphology, marker intensities (raw and normalized), positive pixel fractions (if --thresholds is specified), and cell type (based on --gating-strategy). annotated_cell_types.png is an image of cell boundaries colored by cell type annotation.
 
-parser.add_argument('--labeled-image', type=str,
-    help='Filepath of labeled cell segmentation tif.')
++ --spatial-features
+  + 
+ 
++ --mask-tif
+  + 
+ 
++ --mask-markers
+  + 
+ 
+##### Examples
 
-parser.add_argument('--thresholds', type=str,
-    help='Filepath to tab-seperated .txt file containing marker threshold values. The file should have two columns in the following order: <marker>\t<theshold>. Do not include column names/headers in the file.')
+**Region feature generation using default parameters**
 
-parser.add_argument('--gating-strategy', type=str,
-    help='Filepath to .yaml file containing gating strategy to use while annotating cells.')
+```bash
+mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output
+```
 
-###############################
-## generate-region-features ##
-###############################
-# parser.add_argument('--input-tif', type=str,
-#     help='ome.tiff file to generate spatial features for')
+**Region feature generation using user provided mask**
 
-# parser.add_argument('--output-prefix', type=str, default='output',
-#     help='Output prefix to use when writing output files. Two files will be written: *_spatial_features.h5ad and *_spatial_features.txt. Default is "output". For example, if --output-prefix is "path/to/out/directory/sample" then the two output files will be named path/to/out/directory/sample_spatial_features.h5ad and path/to/out/directory/sample_spatial_features.txt.')
+```bash
+mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output --mask-tif /path/to/mask.tif
+```
 
-parser.add_argument('--mask-tif', type=str,
-    help='Filepath of region mask tif.')
+**Region feature generation using mask generated from custom markers**
 
-parser.add_argument('--mask-markers', type=str, default='Pan-Cytokeratin,E-cadherin',
-    help='If --mask-tif is not provided, these markers will be used to generate a region mask.')
+```bash
+mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output --mask-markers "CD4,CD45,CD8"
+```
 
-parser.add_argument('--spatial-features', type=str,
-    help='Filepath to .h5ad file output by generate-spatial-features.')
 
