@@ -1,0 +1,13 @@
+bbox: a_string
+group: a_string
+host: a_string
+input_tif:
+  class: File
+  path: a/file/path
+mask_markers: a_string
+membrane_channels: a_string
+nuclei_channels: a_string
+platform: a_string
+port: a_string
+project: a_string
+specimen_id: a_string

@@ -46,7 +46,7 @@ outputs:
 - id: region_features_txt
   outputSource: generate_region_features/output_txt
   type: File
-- id: region_mask
+- id: labeled_regions
   outputSource: generate_region_features/region_mask
   type: File
 requirements: []
@@ -128,3 +128,23 @@ steps:
   - id: output_txt
   - id: region_mask
   run: region_features.cwl
+- id: upload_labeled_regions
+  in:
+  - id: dataset
+    source: specimen_id
+  - id: image_name
+    source: specimen_id
+    valueFrom: $(self)_labeled_regions
+  - id: group
+    source: group
+  - id: project
+    source: project
+  - id: port
+    source: port
+  - id: host
+    source: host
+  - id: filepath
+    source: generate_region_features/region_mask
+  label: upload_labeled_regions
+  out: []
+  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl
