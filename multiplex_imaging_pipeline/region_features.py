@@ -151,7 +151,7 @@ def calculate_marker_fractions(channel_to_img, adata, labeled):
     df = pd.DataFrame(data=data, columns=channels, index=labels)
     return df
 
-def generate_mask(mask, sigma=1., min_area=10000):
+def generate_mask(mask, sigma=2., min_area=10000):
     mask = gaussian(mask, sigma=sigma)
     mask = binary_fill_holes(mask)
     
