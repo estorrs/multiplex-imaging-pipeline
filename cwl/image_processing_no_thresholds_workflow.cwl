@@ -68,7 +68,6 @@ steps:
   in:
   - id: dataset
     source: specimen_id
-    valueFrom: $(self)_labeled_nuclei
   - id: image_name
     source: specimen_id
     valueFrom: $(self)_labeled_nuclei
@@ -89,7 +88,6 @@ steps:
   in:
   - id: dataset
     source: specimen_id
-    valueFrom: $(self)_labeled_cells
   - id: image_name
     source: specimen_id
     valueFrom: $(self)_labeled_cells
