@@ -119,35 +119,36 @@ DEFAULT_GATING_STRATEGY = [
 ]
 
 
-def auto_calculate_threshold(x, frac=.003, size=10000, n=5):
+def auto_calculate_threshold(img, frac=.003, size=10000, n=5):
+    std = img.std()
+    x = img / std
     rows, cols = np.random.choice(x.shape[0], size=size), np.random.choice(x.shape[1], size=size)
     vals = x[rows, cols]
     _, counts = np.unique(vals, return_counts=True)
     peak = counts[1:n + 1].mean()
     thresh = peak * frac
+    thresh *= std
     return thresh
 
 
 def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     logging.info(f'extracting {ome_fp}')
     channels, imgs = utils.extract_ome_tiff(ome_fp, as_dict=False)
-    scaled_imgs = np.asarray([img / img.std() for img in imgs])
 
     logging.info(f'extracting {seg_fp}')
     seg = tifffile.imread(seg_fp)
     if thresholds is not None:
         thresholds = np.asarray([thresholds.get(c, 0.) for c in channels])
         logging.info(f'thresholds detected: {list(zip(channels, thresholds))}')
-        masks = rearrange(
-            rearrange(imgs, 'c h w -> h w c') > thresholds,
-            'h w c -> c h w')
+
     else:
         logging.info('thresholds not detected. auto-calculating.')
-        threhsolds = np.asarray([auto_calculate_threshold(img) for img in scaled_imgs])
+        thresholds = np.asarray([auto_calculate_threshold(img) for img in imgs])
         logging.info(f'thresholds: {list(zip(channels, thresholds))}')
-        masks = rearrange(
-            rearrange(scaled_imgs, 'c h w -> h w c') > thresholds,
-            'h w c -> c h w')
+
+    masks = rearrange(
+        rearrange(imgs, 'c h w -> h w c') > thresholds,
+        'h w c -> c h w')
     
     props = regionprops(seg)
     logging.info(f'num cells: {len(props)}')
@@ -161,8 +162,7 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
         area = prop['area']
         seg_tile = seg[r1:r2, c1:c2]
         imgs_tile = imgs[..., r1:r2, c1:c2]
-        if thresholds is not None:
-            masks_tile = masks[..., r1:r2, c1:c2]
+        masks_tile = masks[..., r1:r2, c1:c2]
 
         cell_mask = seg_tile==label
 
@@ -170,10 +170,9 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
         for j in range(imgs_tile.shape[0]):
             img = imgs_tile[j]
 
-            if thresholds is not None:
-                mask = masks_tile[j]
-                counts = (cell_mask & mask).sum()
-                row.append(counts / area)
+            mask = masks_tile[j]
+            counts = (cell_mask & mask).sum()
+            row.append(counts / area)
             
             intensity = img[cell_mask].mean()
             row.append(intensity)

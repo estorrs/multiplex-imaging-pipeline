@@ -139,6 +139,7 @@ def calculate_marker_fractions(channel_to_img, adata, labeled):
     channels = [c.replace('_fraction', '') for c in adata.var.index.to_list()]
     channel_to_thresh = {c:thresh for c, thresh in zip(channels, adata.uns['thresholds'])
                 if thresh > 0 and thresh not in [254., 255., 65534., 65535.]}
+    logging.info(f'Using the following threhsolds to calculate positive fraction: {channel_to_thresh}')
     channels = sorted(set(channel_to_thresh.keys()))
     stacked = np.concatenate([np.expand_dims(channel_to_img[c] >= channel_to_thresh[c], -1)
                               for c in channels], axis=-1)
