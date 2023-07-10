@@ -1,6 +1,8 @@
 # multiplex-imaging-pipeline
 
-A pipeline for multiplex imaging analysis
+A pipeline for multiplex imaging analysis.
+
+Under active development
 
 
 ## Installation
@@ -179,6 +181,21 @@ mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-featur
 
 ```bash
 mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output --mask-markers "CD4,CD45,CD8"
+```
+
+
+## Docker
+
+```bash
+docker pull estorrs/multiplex-imaging-pipeline:0.0.1
+```
+
+Example of ome.tiff generation with docker.
+
+Note that you'll need to map input and output data folders with the -v flag.
+
+```bash
+docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs estorrs/multiplex-imaging-pipeline:0.0.1 mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
 ```
 
 
