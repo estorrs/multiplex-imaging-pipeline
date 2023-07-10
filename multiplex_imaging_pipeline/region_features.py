@@ -173,9 +173,12 @@ def generate_region_mask(channel_to_img, channel_to_thresholds, min_area=10000, 
     channels = sorted(set(channel_to_thresholds.keys()))
     mask = np.zeros_like(next(iter(channel_to_img.values())), dtype=bool)
     for c in channels:
-        val = channel_to_thresholds[c]
-        m = channel_to_img[c] >= val
-        mask |= m
+        if c in channel_to_thresholds:
+            val = channel_to_thresholds[c]
+            m = channel_to_img[c] >= val
+            mask |= m
+        else:
+            logging.info(f'Warning: channel {c} does not have a threshold.')
 
     mask = generate_mask(mask, sigma=sigma, min_area=min_area)
 
@@ -195,10 +198,13 @@ def get_region_features(
         logging.info(f'no mask detected, generating mask from {mask_markers}')
         channels = [c.replace('_fraction', '') for c in a.var.index.to_list()]
         channel_to_thresh = {c:thresh for c, thresh in zip(channels, a.uns['thresholds'])
-                    if thresh > 0 and thresh not in [254., 255., 65534., 65535.]}
+                            if not pd.isnull(thresh)
+                            if thresh > 0
+                            if thresh not in [254., 255., 65534., 65535.]}
         mask_channel_to_img = {c:img for c, img in channel_to_img.items()
                                if c in mask_markers}
-        channel_to_thresholds = {c:v for c, v in channel_to_thresh.items()}
+        channel_to_thresholds = {c:v for c, v in channel_to_thresh.items()
+                                 if c in mask_markers}
         # mask_channel_to_img = {c:img for c, img in channel_to_img_scaled.items()
         #                        if c in mask_markers}
         # channel_to_thresholds = {c:default_threshold for c in mask_channel_to_img.keys()}

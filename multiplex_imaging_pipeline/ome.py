@@ -45,7 +45,7 @@ def identity(c):
     return c
 
 
-def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_type='uint16', subresolutions=5):
+def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_type='uint8', subresolutions=4):
     """
     Generate an HTAN compatible ome tiff from a list of filepaths, where each filepath is a tiff representing a different channel.
 

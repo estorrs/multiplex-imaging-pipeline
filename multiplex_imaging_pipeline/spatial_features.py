@@ -197,7 +197,7 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     order += sorted(rest)
     df = df[order]
 
-    return df
+    return df, thresholds
 
 def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
     if key is None:
@@ -241,11 +241,12 @@ def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
 
     counts = Counter(cell_types).most_common()
     logging.info(f'cells gated: {counts}')
+
     return df
 
 
 def get_spatial_features(labeled_fp, ome_fp, thresholds=None, output_prefix='output', key=None, gating_strategy=None):
-    df = generate_feature_table(ome_fp, labeled_fp, thresholds=thresholds)
+    df, thresholds = generate_feature_table(ome_fp, labeled_fp, thresholds=thresholds)
 
     if key is None:
         key = 'fraction' if any(['_fraction' in c for c in df.columns]) else 'intensity_scaled'
@@ -258,7 +259,7 @@ def get_spatial_features(labeled_fp, ome_fp, thresholds=None, output_prefix='out
     a = anndata.AnnData(X=df[val_cols].values.astype(np.float32), obs=meta)
     a.var.index = [c.replace(f'_{key}', '') for c in val_cols]
 
-    a.uns['thresholds'] = thresholds if thresholds is not None else None
+    a.uns['thresholds'] = thresholds
     a.uns['gating_strategy'] = json.dumps(gating_strategy)
 
     a.obsm['spatial'] = meta[['col', 'row']].values
