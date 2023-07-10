@@ -119,9 +119,19 @@ DEFAULT_GATING_STRATEGY = [
 ]
 
 
+def auto_calculate_threshold(x, frac=.003, size=10000, n=5):
+    rows, cols = np.random.choice(x.shape[0], size=size), np.random.choice(x.shape[1], size=size)
+    vals = x[rows, cols]
+    _, counts = np.unique(vals, return_counts=True)
+    peak = counts[1:n + 1].mean()
+    thresh = peak * frac
+    return thresh
+
+
 def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     logging.info(f'extracting {ome_fp}')
     channels, imgs = utils.extract_ome_tiff(ome_fp, as_dict=False)
+    scaled_imgs = np.asarray([img / img.std() for img in imgs])
 
     logging.info(f'extracting {seg_fp}')
     seg = tifffile.imread(seg_fp)
@@ -130,6 +140,13 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
         logging.info(f'thresholds detected: {list(zip(channels, thresholds))}')
         masks = rearrange(
             rearrange(imgs, 'c h w -> h w c') > thresholds,
+            'h w c -> c h w')
+    else:
+        logging.info('thresholds not detected. auto-calculating.')
+        threhsolds = np.asarray([auto_calculate_threshold(img) for img in scaled_imgs])
+        logging.info(f'thresholds: {list(zip(channels, thresholds))}')
+        masks = rearrange(
+            rearrange(scaled_imgs, 'c h w -> h w c') > thresholds,
             'h w c -> c h w')
     
     props = regionprops(seg)
@@ -186,6 +203,7 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
 def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
     if key is None:
         key = 'fraction' if any(['_fraction' in c for c in df.columns]) else 'intensity_scaled'
+    logging.info(f'cell typing key is: {key}')
     markers = [c.replace(f'_{key}', '') for c in df.columns if f'_{key}' in c]
     logging.info('gating cells with the following markers: ' + str(list(markers)))
     cell_types = np.asarray(['Unlabeled'] * df.shape[0], dtype=object)
