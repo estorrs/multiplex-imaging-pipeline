@@ -13,16 +13,18 @@ pip install multiplex-imaging-pipeline
 
 ### ome.tiff generation
 
+ome.tiff files can be created with the `make-ome` command.
+
 ```bash
 mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-filepath OUTPUT_FILEPATH
 ```
 
 ##### Arguments
 + --input-tif
-  + Input tif or directory of tifs to be converted into HTAN compatible ome.tiff format. Default is "phenocycler". If --platform is "phenocycler", then a file with a .qptiff extension output by the phenocycler platform is expected. If --platform is "codex", then a multichannel imagej .tif output by the first-generation codex machine is expected. If --platform is "raw" then a directory of tifs is expected, where the images will be combined into a multichannel .ome.tiff and the channel names will be named based on the files (for example if one of the files is named protein1.tif, then that channel in the ome.tiff will be named protein1).
+  + Input tif or directory of tifs to be converted into HTAN compatible ome.tiff format. If --platform is "phenocycler", then a file with a .qptiff extension output by the phenocycler platform is expected. If --platform is "codex", then a multichannel imagej .tif output by the first-generation codex machine is expected. If --platform is "raw" then a directory of tifs is expected, where the images will be combined into a multichannel .ome.tiff and the channel names will be named based on the files (for example if one of the files is named protein1.tif, then that channel in the ome.tiff will be named protein1).
 
 + --platform
-  + Can be one of ["phenocycler", "codex", "raw"]. For Akoya images, use "phenocycler" for their new platform (.qptiff file extension), and use "codex" for the first-generation machine (multichannel imagej .tif file). To convert a directory of single channel .tif files into a multichannel ome.tiff, use "raw". See --input-tif for more details.
+  + Can be one of ["phenocycler", "codex", "raw"]. For Akoya images, use "phenocycler" for their new platform (.qptiff file extension), and use "codex" for the first-generation machine (multichannel imagej .tif file). To convert a directory of single channel .tif files into a multichannel ome.tiff, use "raw". See --input-tif for more details. Default is "phenocycler".
 
 + --bbox
   + Crops image to given pixel coordinates. Useful for phenocycler images that image multiple pieces of tissue on the same slide. --bbox is specified as a string and is in the format "TOP,BOTTOM,LEFT,RIGHT".
@@ -148,17 +150,17 @@ mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX
   + Path to ome.tiff to be segmented.
 
 + --output-prefix
-  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Two types of files will be written: 1) `{OUTPUT_PREFIX}_region_features.txt` and 2) `{OUTPUT_PREFIX}_{NAME}_mask.tif`. `region_features.txt` is a tab-seperated file containing feature describing each region in the image. There are three main features: `{NAME}_cell_type_fraction_*` (fraction of each cell type in region type with given NAME), `{NAME}_marker_intensity_*` (raw intensity in region type with given NAME), `{NAME}_marker_intensity_scaled_*` (intensity scaled by std in region type with given NAME), `{NAME}_marker_fraction_*` (positive pixel fraction in region type with given NAME, thresholds are whatever was used in generate-spatial-features). `*.tif` files are labeled images showing the given region type.
+  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Two types of files will be written: 1) `{OUTPUT_PREFIX}_region_features.txt` and 2) `{OUTPUT_PREFIX}_{NAME}_mask.tif`. `region_features.txt` is a tab-seperated file containing feature describing each region in the image. There are three main features: `{NAME}_cell_type_fraction_*` (fraction of each cell type in region type with given NAME), `{NAME}_marker_intensity_*` (raw intensity in region type with given NAME), `{NAME}_marker_intensity_scaled_*` (intensity scaled by std in region type with given NAME), `{NAME}_marker_fraction_*` (positive pixel fraction in region type with given NAME, thresholds are whatever was used in generate-spatial-features). `*.tif` files are labeled images delineating each region type.
 
 + --spatial-features
   + `.h5ad` object output by generate-spatial-features
  
 + --mask-tif
-  + boolean tif defining regions to use. If none is provided, channels in --mask-markers will be used to auto-generate masks.
+  + Boolean tif defining regions to use. If none is provided, channels in --mask-markers will be used to auto-generate masks.
  
 + --mask-markers
   + when --mask-tif is not provided, will be used to auto-generate masks. Defaults to 'Pan-Cytokeratin,E-cadherin'.
- 
+  
 ##### Examples
 
 **Region feature generation using default parameters**
