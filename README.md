@@ -19,7 +19,7 @@ ome.tiff files can be created with the `make-ome` command.
 mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-filepath OUTPUT_FILEPATH
 ```
 
-##### Arguments
+#### Arguments
 + --input-tif
   + Input tif or directory of tifs to be converted into HTAN compatible ome.tiff format. If --platform is "phenocycler", then a file with a .qptiff extension output by the phenocycler platform is expected. If --platform is "codex", then a multichannel imagej .tif output by the first-generation codex machine is expected. If --platform is "raw" then a directory of tifs is expected, where the images will be combined into a multichannel .ome.tiff and the channel names will be named based on the files (for example if one of the files is named protein1.tif, then that channel in the ome.tiff will be named protein1).
 
@@ -32,27 +32,27 @@ mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-file
 + --output-filepath
   + Where to write output .ome.tiff. Default is output.ome.tiff.
  
-##### Examples
+#### Examples
 
-**Making an ome.tiff from a phenocycler .qptiff file**
+###### Making an ome.tiff from a phenocycler .qptiff file
 
 ```bash
 mip make-ome --input-tif /path/to/file.qptiff --platform phenocycler --output-filepath output.ome.tiff
 ```
 
-**Making an ome.tiff from a phenocycler .qptiff file where the output image is cropped to the given pixel coordinates ("TOP,BOTTOM,LEFT,RIGHT").**
+###### Making an ome.tiff from a phenocycler .qptiff file where the output image is cropped to the given pixel coordinates ("TOP,BOTTOM,LEFT,RIGHT").
 
 ```bash
 mip make-ome --input-tif /path/to/file.qptiff --platform phenocycler --output-filepath output.ome.tiff --bbox "0,10000,2000,12000" 
 ```
 
-**Making an ome.tiff from a codex multichannel imagej .tif file**
+###### Making an ome.tiff from a codex multichannel imagej .tif file
 
 ```bash
 mip make-ome --input-tif /path/to/file.tif --platform codex --output-filepath output.ome.tiff
 ```
 
-**Making an ome.tiff from a directory of .tif files**
+###### Making an ome.tiff from a directory of .tif files
 
 ```bash
 mip make-ome --input-tif /path/to/dir/of/tifs/ --platform raw --output-filepath output.ome.tiff
@@ -64,7 +64,7 @@ mip make-ome --input-tif /path/to/dir/of/tifs/ --platform raw --output-filepath 
 mip segment-ome --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --split-size SPLIT_SIZE --nuclei-channels NUCLEI_CHANNELS --membrane-channels MEMBRANE_CHANNELS
 ```
 
-##### Arguments
+#### Arguments
 
 + --input-tif
   + Path to ome.tiff to be segmented.
@@ -81,15 +81,15 @@ mip segment-ome --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --split-size
 + --membrane-channels
   + Which channels in --input-tif to use for membrane segmentation. If multiple channels are provided, then those channels are merged into a single image that is used for segmentation. Channels are provided as a string in the following format: "channel1,channel2,.....,channelz". Default is "Pan-Cytokeratin,E-cadherin,CD45,CD8,CD3e,Vimentin,SMA,CD31,C20". Note: if channel is not in image, than it is attempted to be converted to a more standard name using the CHANNEL_MAPPING [here](https://github.com/estorrs/multiplex-imaging-pipeline/blob/main/multiplex_imaging_pipeline/utils.py#L19).
 
-##### Examples
+#### Examples
 
-**Segmentation of ome.tiff using default parameters**
+###### Segmentation of ome.tiff using default parameters
 
 ```bash
 mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output
 ```
 
-**Segmentation of ome.tiff using custom nuclei and membrane markers**
+###### Segmentation of ome.tiff using custom nuclei and membrane markers
 
 ```bash
 mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output --nuclei-markers "DAPI" --membrane-markers "Pan-Cytokeratin,E-cadherin,Vimentin".
@@ -101,7 +101,7 @@ mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output --nucl
 mip generate-spatial-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --labeled-image LABELED_IMAGE --gating-strategy GATING_STRATEGY --thresholds THRESHOLDS
 ```
 
-##### Arguments
+#### Arguments
 
 + --input-tif
   + Path to ome.tiff to be quantified. Should match --labeled-image segmentation result.
@@ -118,21 +118,21 @@ mip generate-spatial-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFI
 + --thresholds
   + If provided, the given manually defined thresholds will be used to calculate "positive pixel fraction" for specified markers, which is the % of positive pixels for that marker in a given cell. Useful when cell typing and wanting to be certain about eliminating batch effects. By default thresholds are automatically calculated. --thresholds is a tab-seperated .txt file where the first column is a channel name, and the second is the value to use as a threshold (i.e. pixels with an intensity above this threshold will be considered positive). No header should be included in the file.
  
-##### Examples
+#### Examples
 
-**Spatial feature generation using default parameters**
+###### Spatial feature generation using default parameters
 
 ```bash
 mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output
 ```
 
-**Spatial feature generation using custom gating strategy**
+###### Spatial feature generation using custom gating strategy
 
 ```bash
 mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output --gating-strategy /path/to/file.yaml
 ```
 
-**Spatial feature generation using thresholds file**
+###### Spatial feature generation using thresholds file
 
 ```bash
 mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image /path/to/segmentation/labeled/image.tif --output-prefix output --thresholds /path/to/file.txt
@@ -144,7 +144,7 @@ mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image
 mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --spatial-features SPATIAL_FEATURES --mask-tif MASK_TIF --mask-markers MASK_MARKERS
 ```
 
-##### Arguments
+#### Arguments
 
 + --input-tif
   + Path to ome.tiff to be segmented.
@@ -161,21 +161,21 @@ mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX
 + --mask-markers
   + when --mask-tif is not provided, will be used to auto-generate masks. Defaults to 'Pan-Cytokeratin,E-cadherin'.
   
-##### Examples
+#### Examples
 
-**Region feature generation using default parameters**
+###### Region feature generation using default parameters
 
 ```bash
 mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output
 ```
 
-**Region feature generation using user provided mask**
+###### Region feature generation using user provided mask
 
 ```bash
 mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output --mask-tif /path/to/mask.tif
 ```
 
-**Region feature generation using mask generated from custom markers**
+###### Region feature generation using mask generated from custom markers
 
 ```bash
 mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-features /path/to/spatial/features.h5ad --output-prefix output --mask-markers "CD4,CD45,CD8"
