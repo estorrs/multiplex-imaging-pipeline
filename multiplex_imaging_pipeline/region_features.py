@@ -193,9 +193,15 @@ def get_region_features(
         mask = tifffile.imread(mask_fp)
     else:
         logging.info(f'no mask detected, generating mask from {mask_markers}')
-        mask_channel_to_img = {c:img for c, img in channel_to_img_scaled.items()
+        channels = [c.replace('_fraction', '') for c in a.var.index.to_list()]
+        channel_to_thresh = {c:thresh for c, thresh in zip(channels, a.uns['thresholds'])
+                    if thresh > 0 and thresh not in [254., 255., 65534., 65535.]}
+        mask_channel_to_img = {c:img for c, img in channel_to_img.items()
                                if c in mask_markers}
-        channel_to_thresholds = {c:default_threshold for c in mask_channel_to_img.keys()}
+        channel_to_thresholds = {c:v for c, v in channel_to_thresh.items()}
+        # mask_channel_to_img = {c:img for c, img in channel_to_img_scaled.items()
+        #                        if c in mask_markers}
+        # channel_to_thresholds = {c:default_threshold for c in mask_channel_to_img.keys()}
         mask = generate_region_mask(mask_channel_to_img, channel_to_thresholds,
                                     min_area=min_area, sigma=sigma)
 
