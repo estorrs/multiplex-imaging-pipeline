@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir deepcell
 RUN pip install numpy pandas einops matplotlib scanpy seaborn tifffile ome-types scikit-image scikit-learn imagecodecs>=2022.7.27 torch torchvision
 
 COPY . /multiplex-imaging-pipeline
+
+RUN echo 'hahz'
 RUN pip install git+https://github.com/estorrs/wombat
 
 RUN pip install /multiplex-imaging-pipeline

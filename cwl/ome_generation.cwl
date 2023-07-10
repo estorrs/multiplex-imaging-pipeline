@@ -44,7 +44,7 @@ requirements:
 - class: DockerRequirement
   dockerPull: estorrs/multiplex-imaging-pipeline:0.0.1
 - class: ResourceRequirement
-  ramMin: 60000
+  ramMin: 200000
 - class: EnvVarRequirement
   envDef:
     PATH: $(inputs.environ_PATH)
