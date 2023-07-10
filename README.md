@@ -105,7 +105,7 @@ mip generate-spatial-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFI
   + Path to ome.tiff to be quantified. Should match --labeled-image segmentation result.
 
 + --output-prefix
-  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Three files will be written by segment-ome: 1) {OUTPUT_PREFIX}_spatial_features.h5ad and 2) {OUTPUT_PREFIX}_spatial_features.txt, and 3) {OUPUT_PREFIX}_annotated_cell_types.png. spatial_features.* files contain feature tables describing cell morphology, marker intensities (raw and normalized), positive pixel fractions (if --thresholds is specified), and cell type (based on --gating-strategy). annotated_cell_types.png is an image of cell boundaries colored by cell type annotation.
+  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Three files will be written: 1) {OUTPUT_PREFIX}_spatial_features.h5ad and 2) {OUTPUT_PREFIX}_spatial_features.txt, and 3) {OUPUT_PREFIX}_annotated_cell_types.png. spatial_features.* files contain feature tables describing cell morphology, marker intensities (raw and normalized), positive pixel fractions (if --thresholds is specified), and cell type (based on --gating-strategy). annotated_cell_types.png is an image of cell boundaries colored by cell type annotation.
 
 + --labeled-image
   + Labeled .tif file containing cell segmentation information used when generating spatial features. In the labeled .tif files, pixels belong to a cell will have that cells integer ID, background pixels have a value of zero.
@@ -114,7 +114,7 @@ mip generate-spatial-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFI
   + A .yaml file specifying the gating strategy to use when identifying cell types. By default, the gating strategy [here](https://github.com/estorrs/multiplex-imaging-pipeline/blob/main/multiplex_imaging_pipeline/spatial_features.py#L15) will be used.
  
 + --thresholds
-  + If provided, the given manually defined thresholds will be used to calculate "positive pixel fraction" for specified markers, which is the % of positive pixels for that marker in a given cell. Useful when cell typing and wanting to be certain about eliminating batch effects. --thresholds is a tab-seperated .txt file where the first column is a channel name, and the second is the value to use as a threshold (i.e. pixels with an intensity above this threshold will be considered positive). No header should be included in the file.
+  + If provided, the given manually defined thresholds will be used to calculate "positive pixel fraction" for specified markers, which is the % of positive pixels for that marker in a given cell. Useful when cell typing and wanting to be certain about eliminating batch effects. By default thresholds are automatically calculated. --thresholds is a tab-seperated .txt file where the first column is a channel name, and the second is the value to use as a threshold (i.e. pixels with an intensity above this threshold will be considered positive). No header should be included in the file.
  
 ##### Examples
 
@@ -148,16 +148,16 @@ mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX
   + Path to ome.tiff to be segmented.
 
 + --output-prefix
-  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Three files will be written by segment-ome: 1) {OUTPUT_PREFIX}_spatial_features.h5ad and 2) {OUTPUT_PREFIX}_spatial_features.txt, and 3) {OUPUT_PREFIX}_annotated_cell_types.png. spatial_features.* files contain feature tables describing cell morphology, marker intensities (raw and normalized), positive pixel fractions (if --thresholds is specified), and cell type (based on --gating-strategy). annotated_cell_types.png is an image of cell boundaries colored by cell type annotation.
+  + Output prefix where feature tables and cell type image will be written. --output-prefix can include directory paths. Default is "output". Two types of files will be written: 1) `{OUTPUT_PREFIX}_region_features.txt` and 2) `{OUTPUT_PREFIX}_{NAME}_mask.tif`. `region_features.txt` is a tab-seperated file containing feature describing each region in the image. There are three main features: `{NAME}_cell_type_fraction_*` (fraction of each cell type in region type with given NAME), `{NAME}_marker_intensity_*` (raw intensity in region type with given NAME), `{NAME}_marker_intensity_scaled_*` (intensity scaled by std in region type with given NAME), `{NAME}_marker_fraction_*` (positive pixel fraction in region type with given NAME, thresholds are whatever was used in generate-spatial-features). `*.tif` files are labeled images showing the given region type.
 
 + --spatial-features
-  + 
+  + `.h5ad` object output by generate-spatial-features
  
 + --mask-tif
-  + 
+  + boolean tif defining regions to use. If none is provided, channels in --mask-markers will be used to auto-generate masks.
  
 + --mask-markers
-  + 
+  + when --mask-tif is not provided, will be used to auto-generate masks. Defaults to 'Pan-Cytokeratin,E-cadherin'.
  
 ##### Examples
 
