@@ -7,6 +7,8 @@ Under active development
 
 ## Installation
 
+Works with Python>=3.6.
+
 Basic installation (will run all modes except `segment-ome`).
 
 ```bash
