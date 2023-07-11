@@ -190,7 +190,7 @@ def get_region_features(
     a = sc.read_h5ad(adata_fp)
     channel_to_img = utils.extract_ome_tiff(ome_fp)
     channel_to_img = {utils.R_CHANNEL_MAPPING.get(k, k):v for k, v in channel_to_img.items()}
-    channel_to_img_scaled = {c:img / img.std() for c, img in channel_to_img.items()}
+    # channel_to_img_scaled = {c:img / img.std() for c, img in channel_to_img.items()}
 
     if mask_fp is not None:
         mask = tifffile.imread(mask_fp)
@@ -219,13 +219,16 @@ def get_region_features(
         logging.info(f'generating region features for {k}')
         df_meta = get_regionprops_df(img)
 
+        logging.info(f'generating cell fractions')
         df_fracs = calculate_annotation_fractions(a, img, 'cell_type')
         df_fracs.columns = [f'cell_type_fraction_{c}' for c in df_fracs.columns]
 
+        logging.info(f'generating marker intensities')
         df_marker_intensities = calculate_marker_intensities(channel_to_img, img)
         df_marker_intensities.columns = [f'marker_intensity_{c}'
                                          for c in df_marker_intensities.columns]
         
+        logging.info(f'generating marker intensities scaled')
         df_marker_intensities_scaled = calculate_marker_intensities(channel_to_img_scaled, img)
         df_marker_intensities_scaled.columns = [f'marker_intensity_scaled_{c}'
                                          for c in df_marker_intensities_scaled.columns]
@@ -237,6 +240,7 @@ def get_region_features(
         combined = pd.merge(
             combined, df_marker_intensities_scaled, left_index=True, right_index=True, how='left')
         
+        logging.info(f'generating marker fractions')
         if 'thresholds' in a.uns and a.uns['thresholds'] is not None:
             df_marker_fracs = calculate_marker_fractions(channel_to_img, a, img)
             df_marker_fracs.columns = [f'marker_fraction_{c}'
