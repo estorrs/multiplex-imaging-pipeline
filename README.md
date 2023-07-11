@@ -7,8 +7,16 @@ Under active development
 
 ## Installation
 
+Basic installation (will run all modes except `segment-ome`).
+
 ```bash
 pip install multiplex-imaging-pipeline
+```
+
+To preform segmentation, deepcell dependencies need to be installed via the command below. If you need to run segmentation we **highly** suggest installing into a fresh virtual environment.
+
+```bash
+pip install multiplex-imaging-pipeline[segmentation]
 ```
 
 ## Usage
@@ -20,6 +28,8 @@ ome.tiff files can be created with the `make-ome` command.
 ```bash
 mip make-ome --input-tif INPUT_TIF --platform PLATFORM --bbox BBOX --output-filepath OUTPUT_FILEPATH
 ```
+
+See --input-tif and --platform for details on what types of input formats are expected.
 
 #### Arguments
 + --input-tif
