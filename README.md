@@ -197,7 +197,7 @@ mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-featur
 ## Docker
 
 ```bash
-docker pull estorrs/multiplex-imaging-pipeline:0.0.1
+docker pull estorrs/multiplex-imaging-pipeline
 ```
 
 Note that you'll need to map input and output data folders with the -v flag when running the docker container.
@@ -205,13 +205,13 @@ Note that you'll need to map input and output data folders with the -v flag when
 ###### Example of ome.tiff generation with docker.
 
 ```bash
-docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs estorrs/multiplex-imaging-pipeline:0.0.1 mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
+docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -t estorrs/multiplex-imaging-pipeline mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
 ```
 
 ###### Example of ome.tiff cell segmentation with docker.
 
 ```bash
-docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs estorrs/multiplex-imaging-pipeline:0.0.1 mip segment-ome --input-tif /inputs/file.ome.tiff --output-prefix output
+docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -t estorrs/multiplex-imaging-pipeline mip segment-ome --input-tif /inputs/file.ome.tiff --output-prefix output
 ```
 
 
