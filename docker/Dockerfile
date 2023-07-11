@@ -18,6 +18,6 @@ COPY . /multiplex-imaging-pipeline
 RUN echo 'hahz'
 RUN pip install git+https://github.com/estorrs/wombat
 
-RUN pip install /multiplex-imaging-pipeline
+RUN pip install /multiplex-imaging-pipeline[segmentation]
 
 CMD /bin/bash
