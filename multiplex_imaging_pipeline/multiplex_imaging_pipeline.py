@@ -1,5 +1,6 @@
 import argparse
 import logging
+import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,9 @@ import multiplex_imaging_pipeline.utils as utils
 from multiplex_imaging_pipeline.ome import generate_ome_from_tifs, generate_ome_from_qptiff, generate_ome_from_codex_imagej_tif
 from multiplex_imaging_pipeline.spatial_features import get_spatial_features
 from multiplex_imaging_pipeline.region_features import get_region_features
-from multiplex_imaging_pipeline.segmentation import segment_cells
+
+if importlib.util.find_spec("deepcell") is not None:
+    from multiplex_imaging_pipeline.segmentation import segment_cells
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -34,7 +37,7 @@ parser.add_argument('--sep', type=str, default='\n',
 parser.add_argument('--input-tif', type=str,
     help='Used in make-ome mode. Either directory of stitched tif files that will be combined into a single ome.tiff file, a multichannel .tif (for original codex platform), or a .qptiff (phenocycler platform).')
 
-parser.add_argument('--output-filepath', type=str,
+parser.add_argument('--output-filepath', type=str, default='output.ome.tiff',
     help='Location to write ome.tiff file')
 
 parser.add_argument('--platform', type=str,
@@ -184,6 +187,8 @@ def main():
             args.bbox, str) else None
         make_ome(args.input_tif, args.output_filepath, platform=args.platform, bbox=bbox)
     elif args.mode == 'segment-ome':
+        if importlib.util.find_spec("deepcell") is None:
+            raise RuntimeError('Segmentation libraries not installed. Run "pip install multiplex-imaging-pipeline[segmentation]" to install.')
         nuclei_markers = args.nuclei_channels.split(',')
         membrane_markers = args.membrane_channels.split(',')
         segment_ome(args.input_tif, args.output_prefix, args.split_size,
