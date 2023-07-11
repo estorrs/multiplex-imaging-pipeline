@@ -122,10 +122,13 @@ def calculate_annotation_fractions(adata, labeled, key):
     return df
         
 
-def calculate_marker_intensities(channel_to_img, labeled):
+def calculate_marker_intensities(channel_to_img, labeled, scale=False):
     data, labels = [], []
     channels = sorted(set(channel_to_img.keys()))
-    stacked = np.concatenate([np.expand_dims(channel_to_img[c], -1) for c in channels], axis=-1)
+    if scale:
+        stacked = np.concatenate([np.expand_dims(channel_to_img[c] / channel_to_img[c].std(), -1) for c in channels], axis=-1)
+    else:
+        stacked = np.concatenate([np.expand_dims(channel_to_img[c], -1) for c in channels], axis=-1)
     props = regionprops(labeled, intensity_image=stacked)
     for prop in props:
         labels.append(prop.label)
@@ -229,7 +232,7 @@ def get_region_features(
                                          for c in df_marker_intensities.columns]
         
         logging.info(f'generating marker intensities scaled')
-        df_marker_intensities_scaled = calculate_marker_intensities(channel_to_img_scaled, img)
+        df_marker_intensities_scaled = calculate_marker_intensities(channel_to_img, img, scale=True)
         df_marker_intensities_scaled.columns = [f'marker_intensity_scaled_{c}'
                                          for c in df_marker_intensities_scaled.columns]
 
