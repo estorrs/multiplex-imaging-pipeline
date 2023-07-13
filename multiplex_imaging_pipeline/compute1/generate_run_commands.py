@@ -49,6 +49,9 @@ parser.add_argument('--target-dir', type=str,
 parser.add_argument('--no-copy', action='store_true',
     help='Whether to move or copy run from original location. Run is copied when moved by default. Used in move-run')
 
+parser.add_argument('--n-concurrent', type=int, default=10,
+    help='Number of workflows to run simultaneously.')
+
 args = parser.parse_args()
 
 
@@ -67,7 +70,7 @@ def make_run():
 
     job_cmds = pipeline.from_run_list(
         run_map, args.run_dir, tool_root, args.pipeline_name,
-        proxy_run_dir=args.proxy_run_dir, queue=args.queue)
+        proxy_run_dir=args.proxy_run_dir, queue=args.queue, n_concurrent=args.n_concurrent)
 
 
 def tidy_run():
