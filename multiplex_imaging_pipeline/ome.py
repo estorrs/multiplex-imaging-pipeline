@@ -110,8 +110,8 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_ty
                 type=pixel_type,
                 big_endian=False,
                 channels=[model.Channel(id=f'Channel:{i}', name=c) for i, c in enumerate(biomarkers)],
-                physical_size_x=1 / PHENOCYCLER_PIXELS_PER_MICRON,
-                physical_size_y=1 / PHENOCYCLER_PIXELS_PER_MICRON,
+                physical_size_x=1 / CODEX_OLD_PIXELS_PER_MICRON,
+                physical_size_y=1 / CODEX_OLD_PIXELS_PER_MICRON,
                 physical_size_x_unit='µm',
                 physical_size_y_unit='µm'
             )

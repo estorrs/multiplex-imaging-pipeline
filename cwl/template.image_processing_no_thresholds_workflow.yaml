@@ -1,14 +1,10 @@
-group: a_string
-host: a_string
-input_tif:
-  class: File
-  path: a/file/path
 mask_markers: a_string
 mask_tif:
   class: File
   path: a/file/path
 membrane_channels: a_string
 nuclei_channels: a_string
-port: a_string
-project: a_string
+ome_tiff:
+  class: File
+  path: a/file/path
 specimen_id: a_string

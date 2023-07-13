@@ -17,18 +17,6 @@ inputs:
 - default: Pan-Cytokeratin,E-cadherin
   id: mask_markers
   type: string?
-- default: Multiplex_Imaging
-  id: project
-  type: string?
-- default: htan-imaging.wucon.wustl.edu
-  id: host
-  type: string?
-- default: '4064'
-  id: port
-  type: string?
-- default: HTAN
-  id: group
-  type: string?
 label: image_processing_no_thresholds_workflow
 outputs:
 - id: labeled_nuclei
@@ -67,46 +55,6 @@ steps:
   - id: labeled_cells
   - id: labeled_nuclei
   run: segmentation.cwl
-- id: upload_labeled_nuclei
-  in:
-  - id: dataset
-    source: specimen_id
-  - id: image_name
-    source: specimen_id
-    valueFrom: $(self)_labeled_nuclei
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
-  - id: filepath
-    source: segment_ome/labeled_nuclei
-  label: upload_labeled_nuclei
-  out: []
-  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl
-- id: upload_labeled_cells
-  in:
-  - id: dataset
-    source: specimen_id
-  - id: image_name
-    source: specimen_id
-    valueFrom: $(self)_labeled_cells
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
-  - id: filepath
-    source: segment_ome/labeled_cells
-  label: upload_labeled_cells
-  out: []
-  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl
 - id: generate_spatial_features
   in:
   - id: input_tif
@@ -119,26 +67,6 @@ steps:
   - id: output_h5ad
   - id: cell_type_image
   run: spatial_features.cwl
-- id: upload_cell_image
-  in:
-  - id: dataset
-    source: specimen_id
-  - id: image_name
-    source: specimen_id
-    valueFrom: $(self)_cell_type_image
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
-  - id: filepath
-    source: generate_spatial_features/cell_type_image
-  label: upload_cell_image
-  out: []
-  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl
 - id: generate_region_features
   in:
   - id: input_tif
@@ -152,23 +80,3 @@ steps:
   - id: output_txt
   - id: region_mask
   run: region_features.cwl
-- id: upload_labeled_regions
-  in:
-  - id: dataset
-    source: specimen_id
-  - id: image_name
-    source: specimen_id
-    valueFrom: $(self)_labeled_regions
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
-  - id: filepath
-    source: generate_region_features/region_mask
-  label: upload_labeled_regions
-  out: []
-  run: ../submodules/omero-wrapper/cwl/omero_wrapper_upload.cwl

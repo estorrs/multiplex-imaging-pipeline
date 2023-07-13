@@ -20,18 +20,6 @@ inputs:
 - default: Pan-Cytokeratin,E-cadherin
   id: mask_markers
   type: string?
-- default: Multiplex_Imaging
-  id: project
-  type: string?
-- default: htan-imaging.wucon.wustl.edu
-  id: host
-  type: string?
-- default: '4064'
-  id: port
-  type: string?
-- default: HTAN
-  id: group
-  type: string?
 label: full_imaging_workflow
 outputs:
 - id: ome_tiff
