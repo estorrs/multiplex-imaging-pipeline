@@ -58,14 +58,6 @@ steps:
     source: platform
   - id: bbox
     source: bbox
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
   label: image_preprocessing
   out:
   - id: ome_tiff
@@ -82,14 +74,6 @@ steps:
     source: membrane_channels
   - id: mask_markers
     source: mask_markers
-  - id: group
-    source: group
-  - id: project
-    source: project
-  - id: port
-    source: port
-  - id: host
-    source: host
   label: image_processing_to_thresholds
   out:
   - id: labeled_nuclei
