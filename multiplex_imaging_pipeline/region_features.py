@@ -231,17 +231,17 @@ def get_region_features(
         df_marker_intensities.columns = [f'marker_intensity_{c}'
                                          for c in df_marker_intensities.columns]
         
-        logging.info(f'generating marker intensities scaled')
-        df_marker_intensities_scaled = calculate_marker_intensities(channel_to_img, img, scale=True)
-        df_marker_intensities_scaled.columns = [f'marker_intensity_scaled_{c}'
-                                         for c in df_marker_intensities_scaled.columns]
+        # logging.info(f'generating marker intensities scaled')
+        # df_marker_intensities_scaled = calculate_marker_intensities(channel_to_img, img, scale=True)
+        # df_marker_intensities_scaled.columns = [f'marker_intensity_scaled_{c}'
+        #                                  for c in df_marker_intensities_scaled.columns]
 
         combined = pd.merge(
             df_meta, df_fracs, left_index=True, right_index=True, how='left')
         combined = pd.merge(
             combined, df_marker_intensities, left_index=True, right_index=True, how='left')
-        combined = pd.merge(
-            combined, df_marker_intensities_scaled, left_index=True, right_index=True, how='left')
+        # combined = pd.merge(
+        #     combined, df_marker_intensities_scaled, left_index=True, right_index=True, how='left')
         
         logging.info(f'generating marker fractions')
         if 'thresholds' in a.uns and a.uns['thresholds'] is not None:

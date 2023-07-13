@@ -344,3 +344,20 @@ def generate_ome_from_codex_imagej_tif(tif_fp, output_fp, bbox=None, pixel_type=
             )
         xml_str = to_xml(o)
         out_tif.overwrite_description(xml_str.encode())
+
+
+
+def save_basic_ome(fp, data, channels):
+    """
+    data - (c, h, w)
+    """
+    with tifffile.TiffWriter(fp, bigtiff=True) as tif:
+        metadata={
+            'axes': 'TCYXS',
+            'Channel': {'Name': channels},
+        }
+        tif.write(
+            rearrange(data, 'c y x -> 1 c y x 1'),
+            metadata=metadata,
+            compression='LZW',
+        )

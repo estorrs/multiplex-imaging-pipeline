@@ -11,6 +11,7 @@ from tifffile import TiffFile
 from ome_types import from_tiff, from_xml
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from PIL import Image, ImageDraw, ImageFont
 from skimage.exposure import rescale_intensity
 from skimage.segmentation import find_boundaries
 
@@ -82,18 +83,28 @@ def listfiles(folder, regex=None):
                 yield os.path.join(root, filename)
 
 
-def extract_ome_tiff(fp, channels=None, as_dict=True):   
+def extract_ome_tiff(fp, channels=None, as_dict=True, level=None):   
     tif = TiffFile(fp)
     ome = from_xml(tif.ome_metadata)
     im = ome.images[0]
     d = {}
-    img_channels, img_channels, imgs = [], [], []
-    for c, p in zip(im.pixels.channels, tif.pages):
-        if channels is None or c.name in channels:
-            img = p.asarray()
+    img_channels, imgs = [], []
+
+    if level is None:
+        for c, p in zip(im.pixels.channels, tif.pages):
+            if channels is None or c.name in channels:
+                img = p.asarray()
+                d[c.name] = img
+                imgs.append(img)
+                img_channels.append(c.name)
+    else:
+        x = tif.series[0].levels[level].asarray()
+        print(level, x.shape)
+        for c, img in zip(im.pixels.channels, x):
             d[c.name] = img
             imgs.append(img)
             img_channels.append(c.name)
+
     if channels is not None and len(set(channels).intersection(set(img_channels))) != len(channels):
         raise RuntimeError(f'Not all channels were found in ome tiff: {channels} | {img_channels}')
     
@@ -286,3 +297,15 @@ def save_annotated_rgba(labeled_img, adata, filepath, figsize=(10, 10), dpi=300)
     ax.legend(handles=custom, loc='center')
 
     plt.savefig(filepath, dpi=dpi)
+
+
+def write_label(img, text, font=None, fontsize=40):
+    img = Image.fromarray(img)
+ 
+    draw = ImageDraw.Draw(img)
+    if font is not None:
+        draw.font = ImageFont.truetype(font, fontsize)
+    draw.text((10, 10), text, fill=255)
+    new = np.asarray(img)
+    return new
+
