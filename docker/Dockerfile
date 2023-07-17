@@ -15,7 +15,7 @@ RUN pip install numpy pandas einops matplotlib scanpy seaborn tifffile ome-types
 
 COPY . /multiplex-imaging-pipeline
 
-RUN echo 'haddddhz'
+RUN echo 'hzladdhl'
 RUN pip install git+https://github.com/estorrs/wombat
 
 RUN pip install /multiplex-imaging-pipeline[segmentation]

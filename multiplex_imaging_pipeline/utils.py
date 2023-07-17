@@ -20,14 +20,16 @@ from skimage.segmentation import find_boundaries
 CHANNEL_MAPPING = {
     'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK', 'Pan-CK (D)', 'PanCK (D)'],
     'E-cadherin': ['E-cadherin'],
-    'CD45': ['CD45 (D)', 'CD45', 'CD45-(D)', 'CD45RO'],
+    'CD45': ['CD45 (D)', 'CD45', 'CD45-(D)'],
+    'CD45RO': ['CD45RO'],
+    'CD45RA': ['CD45RA'],
     'CD8': ['CD8', 'CD8a'],
     'DAPI': ['DAPI'],
     'CD4': ['CD4', 'CD4 (D)'],
     'CD3e': ['CD3e', 'CD3'],
     'Vimentin': ['Vimentin-(D)', 'Vimentin', 'Vimentin (D)'],
     'SMA': ['SMA-(D)', 'SMA', 'SMA (D)', 'a-SMA (D)'],
-    'CD31': ['CD31', 'CD31-(D)'],
+    'CD31': ['CD31', 'CD31-(D)', 'CD31 (D)'],
     'CD20': ['CD20-(D)', 'CD20', 'CD20 (D)', 'CD20-Akoya'],
     'CD68': ['CD68', 'CD68 (D)', 'CD68-(D)'],
     'CD163': ['CD163'],
@@ -35,12 +37,12 @@ CHANNEL_MAPPING = {
     'cKit': ['cKIT (D)', 'cKit (D)', 'cKit', 'cKIT', 'cKIT-(D)'],
     'MGP': ['MGP', 'MGP (D)', 'MGP-(D)'],
     'CD36': ['CD36-(D)', 'CD36'],
-    'PR': ['PR', 'PR-(D)'],
-    'ER': ['ER', 'ER-(D)'],
+    'PR': ['PR', 'PR-(D)', 'PR (D)'],
+    'ER': ['ER', 'ER-(D)', 'ER (D)'],
     'P21': ['P21', 'P21-(D)', 'P21-(D)', 'P21 (D)'],
     'P16': ['P16-(D)'],
     'CK5': ['Keratin 5', 'KRT5'],
-    'TFF1': ['TFF1', 'TFF1-(D)'],
+    'TFF1': ['TFF1', 'TFF1-(D)', 'TFF1 (D)'],
     'beta-integrin': ['beta-integrin', 'beta3-integrin'],
     'CK14': ['CK14', 'Keratin 14', 'CK14 (D)'],
     'CK17': ['CK17', 'CK17 (D)', 'CK17-(D)', 'Keratin 17'],
@@ -51,7 +53,7 @@ CHANNEL_MAPPING = {
     'COX6c': ['COX6c (D)'],
     'Her2': ['Her2', 'Her2 (D)'],
     'Bap1': ['Bap1 (D)'],
-    'GLUT1': ['Glut1', 'GLUT1', 'GLUT1-(D)'],
+    'GLUT1': ['Glut1', 'GLUT1', 'GLUT1-(D)', 'GLUT1 (D)'],
     'CD11c': ['CD11c'],
     'HLA-DR': ['HLA-DR'],
     'Ki67': ['Ki67', 'KI67'],
@@ -62,13 +64,32 @@ CHANNEL_MAPPING = {
     'BCAL': ['BCAL'],
     'TUBB3': ['TUBB3', 'TUBB3 (D)'],
     'PTPRZ1': ['PTPRZ1', 'PTPRZ1 (D)'],
-    'HIF1a': ['HIF1a', 'HIF1a (D)'],
+    'HIF1A': ['HIF1a', 'HIF1a (D)', 'HIF1A'],
     'PAI1': ['PAI1', 'PAI1-(D)'],
     'GFAP': ['GFAP', 'GFAP (D)'],
     'VEGFA': ['VEGFA', 'VEGFA (D)'],
     'IBA1': ['IBA1', 'IBA1 (D)'],
     'OLIG2': ['OLIG2', 'OLIG2 (D)'],
     'FN1': ['FN1', 'FN1 (D)'],
+    'a-Amylase': ['a-Amylase'],
+    'Hep-Par-1': ['Hep-Par-1 (D)'],
+    'Granzyme-B': ['Granzyme B'],
+    'TCF-1': ['TCF-1'],
+    'CD39': ['CD39'],
+    'PD1': ['PD-1'],
+    'PDL1': ['PD-L1'],
+    'Histone-H3-Pho': ['Histone H3 Pho'],
+    'Maspin': ['Maspin'],
+    'MMP9': ['MMP9'],
+    'CD44': ['CD44'],
+    'CD107A': ['CD107a'],
+    'FGFR3': ['FGFR3'],
+    'CD138': ['CD138'],
+    'MLPH': ['MLPH'],
+    'P63': ['P63'],
+    'GP2': ['GP2'],
+    'COX2': ['COX2'],
+    'Lyve-1': ['Lyve-1'],
 }
 R_CHANNEL_MAPPING = {v:k for k, vs in CHANNEL_MAPPING.items() for v in vs}
 
@@ -83,7 +104,7 @@ def listfiles(folder, regex=None):
                 yield os.path.join(root, filename)
 
 
-def extract_ome_tiff(fp, channels=None, as_dict=True, level=None):   
+def extract_ome_tiff(fp, channels=None, as_dict=True, level=None, flexibility='strict'):   
     tif = TiffFile(fp)
     ome = from_xml(tif.ome_metadata)
     im = ome.images[0]
@@ -97,6 +118,11 @@ def extract_ome_tiff(fp, channels=None, as_dict=True, level=None):
                 d[c.name] = img
                 imgs.append(img)
                 img_channels.append(c.name)
+            elif c.name in R_CHANNEL_MAPPING:
+                img = p.asarray()
+                d[R_CHANNEL_MAPPING[c.name]] = img
+                imgs.append(img)
+                img_channels.append(R_CHANNEL_MAPPING[c.name])
     else:
         x = tif.series[0].levels[level].asarray()
         print(level, x.shape)
@@ -105,7 +131,7 @@ def extract_ome_tiff(fp, channels=None, as_dict=True, level=None):
             imgs.append(img)
             img_channels.append(c.name)
 
-    if channels is not None and len(set(channels).intersection(set(img_channels))) != len(channels):
+    if channels is not None and len(set(channels).intersection(set(img_channels))) != len(channels) and flexibility=='strict':
         raise RuntimeError(f'Not all channels were found in ome tiff: {channels} | {img_channels}')
     
     if as_dict:
@@ -119,6 +145,12 @@ def get_ome_tiff_channels(fp):
     ome = from_xml(tif.ome_metadata)
     im = ome.images[0]
     return [c.name for c in im.pixels.channels]
+
+
+def unconverted_channels(fp):
+    channels = get_ome_tiff_channels(fp)
+    channels = [c for c in channels if c not in R_CHANNEL_MAPPING]
+    return channels
 
 
 def create_circular_mask(h, w, center=None, radius=None):

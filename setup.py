@@ -41,6 +41,7 @@ setup(
         'scikit-image',
         'scikit-learn',
         'imagecodecs>=2022.7.27',
+        'timm', 
         'torch',
         'torchvision',
     ],

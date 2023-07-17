@@ -188,14 +188,15 @@ def generate_region_mask(channel_to_img, channel_to_thresholds, min_area=10000, 
     return mask
 
 def get_region_features(
-        adata_fp, ome_fp, mask_fp=None,
-        mask_markers=None, min_area=10000, sigma=1., default_threshold=2.):
+        adata_fp, ome_fp, mask_fp=None, annotation_keys=['cell_type'],
+        mask_markers=None, min_area=10000, sigma=1.,):
     a = sc.read_h5ad(adata_fp)
     channel_to_img = utils.extract_ome_tiff(ome_fp)
     channel_to_img = {utils.R_CHANNEL_MAPPING.get(k, k):v for k, v in channel_to_img.items()}
     # channel_to_img_scaled = {c:img / img.std() for c, img in channel_to_img.items()}
 
     if mask_fp is not None:
+        logging.info(f'reading mask from {mask_fp}')
         mask = tifffile.imread(mask_fp)
     else:
         logging.info(f'no mask detected, generating mask from {mask_markers}')
@@ -208,9 +209,6 @@ def get_region_features(
                                if c in mask_markers}
         channel_to_thresholds = {c:v for c, v in channel_to_thresh.items()
                                  if c in mask_markers}
-        # mask_channel_to_img = {c:img for c, img in channel_to_img_scaled.items()
-        #                        if c in mask_markers}
-        # channel_to_thresholds = {c:default_threshold for c in mask_channel_to_img.keys()}
         mask = generate_region_mask(mask_channel_to_img, channel_to_thresholds,
                                     min_area=min_area, sigma=sigma)
 
@@ -223,8 +221,11 @@ def get_region_features(
         df_meta = get_regionprops_df(img)
 
         logging.info(f'generating cell fractions')
-        df_fracs = calculate_annotation_fractions(a, img, 'cell_type')
-        df_fracs.columns = [f'cell_type_fraction_{c}' for c in df_fracs.columns]
+        fracs_dfs = []
+        for ann_key in annotation_keys:
+            df_fracs = calculate_annotation_fractions(a, img, ann_key)
+            df_fracs.columns = [f'cell_fraction_{ann_key}_{c}' for c in df_fracs.columns]
+            fracs_dfs.append(df_fracs)
 
         logging.info(f'generating marker intensities')
         df_marker_intensities = calculate_marker_intensities(channel_to_img, img)
@@ -236,8 +237,10 @@ def get_region_features(
         # df_marker_intensities_scaled.columns = [f'marker_intensity_scaled_{c}'
         #                                  for c in df_marker_intensities_scaled.columns]
 
-        combined = pd.merge(
-            df_meta, df_fracs, left_index=True, right_index=True, how='left')
+        combined = df_meta
+        for df_fracs in fracs_dfs:
+            combined = pd.merge(
+                combined, df_fracs, left_index=True, right_index=True, how='left')
         combined = pd.merge(
             combined, df_marker_intensities, left_index=True, right_index=True, how='left')
         # combined = pd.merge(
