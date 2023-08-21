@@ -154,6 +154,8 @@ mip generate-spatial-features --input-tif /path/to/file.ome.tiff --labeled-image
 
 ### generation of region features
 
+**NOTE: generate-region-features is still in active development and is still slightly buggy in some edge cases**
+
 ```bash
 mip generate-region-features --input-tif INPUT_TIF --output-prefix OUTPUT_PREFIX --spatial-features SPATIAL_FEATURES --mask-tif MASK_TIF --mask-markers MASK_MARKERS
 ```
