@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md')) as f:
 setup(
     # $ pip install multiplex-imaging-pipeline
     name='multiplex-imaging-pipeline',
-    version='0.0.8',
+    version='0.0.9',
     description='A Python library for multiplex imaging analysis',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -38,12 +38,14 @@ setup(
         'seaborn',
         'tifffile',
         'ome-types',
+        'pydantic<=1.10.12',
         'scikit-image',
         'scikit-learn',
         'imagecodecs>=2022.7.27',
         'timm', 
         'torch',
         'torchvision',
+        'pytorch-lightning',
     ],
     extras_require={
         'segmentation': [

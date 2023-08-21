@@ -111,6 +111,11 @@ def extract_ome_tiff(fp, channels=None, as_dict=True, level=None, flexibility='s
     d = {}
     img_channels, imgs = [], []
 
+    pools = [[k, *vs] for k, vs in CHANNEL_MAPPING.items()
+             if channels is not None
+             if k in channels or any([v in channels for v in vs])]
+    possible_channels = [v for vs in pools for v in vs]
+
     if level is None:
         for c, p in zip(im.pixels.channels, tif.pages):
             if channels is None or c.name in channels:
@@ -118,7 +123,7 @@ def extract_ome_tiff(fp, channels=None, as_dict=True, level=None, flexibility='s
                 d[c.name] = img
                 imgs.append(img)
                 img_channels.append(c.name)
-            elif c.name in R_CHANNEL_MAPPING:
+            elif c.name in possible_channels:
                 img = p.asarray()
                 d[R_CHANNEL_MAPPING[c.name]] = img
                 imgs.append(img)
