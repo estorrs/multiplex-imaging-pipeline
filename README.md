@@ -2,7 +2,9 @@
 
 A pipeline for multiplex imaging analysis.
 
-Under active development
+**Under active development**
+
+**generate-region-features** and **generate-spatial-features** may not work as intended at the moment.
 
 
 ## Installation
