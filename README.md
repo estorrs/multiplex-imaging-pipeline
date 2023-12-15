@@ -108,7 +108,7 @@ mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output
 ###### Segmentation of ome.tiff using custom nuclei and membrane markers
 
 ```bash
-mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output --nuclei-markers "DAPI" --membrane-markers "Pan-Cytokeratin,E-cadherin,Vimentin".
+mip segment-ome --input-tif /path/to/file.ome.tiff --output-prefix output --nuclei-channels "DAPI" --membrane-channels "Pan-Cytokeratin,E-cadherin,Vimentin".
 ```
 
 ### generation of spatial features
