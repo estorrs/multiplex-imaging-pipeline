@@ -17,7 +17,7 @@ Basic installation (will run all modes except `segment-ome`).
 pip install multiplex-imaging-pipeline
 ```
 
-To preform segmentation, [deepcell](https://github.com/vanvalenlab/deepcell-tf) dependencies need to be installed via the command below. If you need to run segmentation we **highly** suggest installing into a fresh virtual environment that has gcc installed as shown below. Installing deepcell tends to throw errors on a lot of machines, if this is the case for you we provide a [docker](https://github.com/estorrs/multiplex-imaging-pipeline/tree/main#docker) image that can run all `multiplex-imaging-pipeline` functionality.
+To preform segmentation, [deepcell](https://github.com/vanvalenlab/deepcell-tf) dependencies need to be installed via the command below. If you need to run segmentation we **highly** suggest installing into a fresh virtual environment that has gcc installed as shown below. Also note that you may need to create an access token at https://users.deepcell.org. Installing deepcell tends to throw errors on a lot of machines, if this is the case for you we provide a [docker](https://github.com/estorrs/multiplex-imaging-pipeline/tree/main#docker) image that can run all `multiplex-imaging-pipeline` functionality.
 
 ```bash
 conda create -n multiplex-imaging-pipeline -c conda-forge python=3.9 gcc -y # install python and gcc
