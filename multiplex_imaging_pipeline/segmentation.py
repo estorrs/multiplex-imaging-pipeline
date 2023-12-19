@@ -65,6 +65,8 @@ def segment_cells(
     channel_to_img = extract_ome_tiff(fp)
     
     channel_to_img = {R_CHANNEL_MAPPING.get(k, k):v for k, v in channel_to_img.items()}
+    nuclei_channels = [R_CHANNEL_MAPPING.get(k, k) for k in nuclei_channels]
+    membrane_channels = [R_CHANNEL_MAPPING.get(k, k) for k in membrane_channels]
     
     nuclei = merge_channels(channel_to_img, nuclei_channels)
     membrane = merge_channels(
