@@ -211,14 +211,15 @@ mip generate-region-features --input-tif /path/to/file.ome.tiff --spatial-featur
 docker pull estorrs/multiplex-imaging-pipeline
 ```
 
-**NOTE** that while running segmentation you will need to pass the `DEEPCELL_ACCESS_TOKEN` to the docker container using the -e flag because this is required by Deepcell. `DEEPCELL_ACCESS_TOKEN` can be created at deepcells website https://users.deepcell.org/.
-Also, note that you'll need to map input and output data folders with the -v flag when running the docker container.
+**NOTE** that you'll need to map input and output data folders with the -v flag when running the docker container.
 
 ###### Example of ome.tiff generation with docker.
 
 ```bash
-docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -e DEEPCELL_ACCESS_TOKEN="YOUR_ACCESS_TOKEN_HERE" -t estorrs/multiplex-imaging-pipeline mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
+docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -t estorrs/multiplex-imaging-pipeline mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
 ```
+
+**NOTE** that while running segmentation you will need to pass the `DEEPCELL_ACCESS_TOKEN` to the docker container using the -e flag because this is required by Deepcell. `DEEPCELL_ACCESS_TOKEN` can be created at deepcells website https://users.deepcell.org/.
 
 ###### Example of ome.tiff cell segmentation with docker.
 
