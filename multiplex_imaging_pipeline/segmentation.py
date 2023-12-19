@@ -8,9 +8,6 @@ from deepcell.applications import Mesmer
 from multiplex_imaging_pipeline.utils import extract_ome_tiff, merge_channels, R_CHANNEL_MAPPING
 
 
-APP = Mesmer()
-
-
 def remove_labeled_edges(labeled, criteria=['top', 'bottom', 'left', 'right']):
     new = labeled.copy()
     pool = set()
@@ -62,9 +59,13 @@ def keep_first(labeled1, labeled2, threshold=.1, start_idx=None):
 def segment_cells(
         fp, split_size=25000, overlap_padding=200, nuclei_channels=['DAPI'],
         membrane_channels=['Pan-Cytokeratin', 'E-cadherin', 'CD45', 'CD8', 'CD3e', 'Vimentin', 'SMA', 'CD31', 'CD20']):
+    app = Mesmer()
+
     channel_to_img = extract_ome_tiff(fp)
     
     channel_to_img = {R_CHANNEL_MAPPING.get(k, k):v for k, v in channel_to_img.items()}
+    nuclei_channels = [R_CHANNEL_MAPPING.get(k, k) for k in nuclei_channels]
+    membrane_channels = [R_CHANNEL_MAPPING.get(k, k) for k in membrane_channels]
     
     nuclei = merge_channels(channel_to_img, nuclei_channels)
     membrane = merge_channels(
@@ -93,7 +94,7 @@ def segment_cells(
                     input_img = np.expand_dims(input_img, axis=0)
                     if input_img.shape[1] > 256 and input_img.shape[2] > 256:
 
-                        segmentation_predictions = APP.predict(input_img, compartment='both')
+                        segmentation_predictions = app.predict(input_img, compartment='both')
 
                         c_labels = segmentation_predictions[0, ..., 0]
                         n_labels = segmentation_predictions[0, ..., 1]
@@ -122,7 +123,7 @@ def segment_cells(
                                 np.expand_dims(membrane, axis=-1)), axis=-1)
         input_img = np.expand_dims(input_img, axis=0)
 
-        segmentation_predictions = APP.predict(input_img, compartment='both')
+        segmentation_predictions = app.predict(input_img, compartment='both')
 
         labeled_cells, labeled_nuclei = (segmentation_predictions[0, ..., 0],
                                          segmentation_predictions[0, ..., 1])

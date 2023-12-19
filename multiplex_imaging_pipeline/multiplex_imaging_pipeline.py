@@ -102,9 +102,6 @@ parser.add_argument('--spatial-features', type=str,
     help='Filepath to .h5ad file output by generate-spatial-features.')
 
 
-args = parser.parse_args()
-
-
 
 def run_show_channels(ome_tiff_fp, sep):
     channels = utils.get_ome_tiff_channels(ome_tiff_fp)
@@ -182,6 +179,7 @@ def run_generate_region_features():
 
 
 def main():
+    args = parser.parse_args()
     if args.mode == 'make-ome':
         bbox = [int(x) for x in args.bbox.split(',')] if args.bbox is not None and isinstance(
             args.bbox, str) else None
