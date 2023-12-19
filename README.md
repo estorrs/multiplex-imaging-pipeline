@@ -9,7 +9,7 @@ A pipeline for multiplex imaging analysis.
 
 ## Installation
 
-Works with Python>=3.6.
+Works with Python>=3.8
 
 Basic installation (will run all modes except `segment-ome`).
 
@@ -17,13 +17,16 @@ Basic installation (will run all modes except `segment-ome`).
 pip install multiplex-imaging-pipeline
 ```
 
-To preform segmentation, [deepcell](https://github.com/vanvalenlab/deepcell-tf) dependencies need to be installed via the command below. If you need to run segmentation we **highly** suggest installing into a fresh virtual environment that has gcc installed as shown below. Also note that you may need to create an access token at https://users.deepcell.org. Installing deepcell tends to throw errors on a lot of machines, if this is the case for you we provide a [docker](https://github.com/estorrs/multiplex-imaging-pipeline/tree/main#docker) image that can run all `multiplex-imaging-pipeline` functionality.
+To preform segmentation, [deepcell](https://github.com/vanvalenlab/deepcell-tf) dependencies need to be installed via the command below. If you need to run segmentation we **highly** suggest installing into a fresh virtual environment that has gcc installed as shown below. Also note that you may need to create and use an access token by following instructions at https://users.deepcell.org
 
 ```bash
 conda create -n multiplex-imaging-pipeline -c conda-forge python=3.9 gcc -y # install python and gcc
 conda activate multiplex-imaging-pipeline # activate conda environment
 pip install multiplex-imaging-pipeline[segmentation] # install multiplex imaging pipeline with segmentation dependencies
 ```
+
+Installing deepcell tends to throw errors on a lot of machines, if this is the case for you we provide a [docker](https://github.com/estorrs/multiplex-imaging-pipeline/tree/main#docker) image that can run all `multiplex-imaging-pipeline` functionality. See the docker section at the bottom of the page for details.
+
 
 ## Usage
 
@@ -216,10 +219,12 @@ Note that you'll need to map input and output data folders with the -v flag when
 docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -t estorrs/multiplex-imaging-pipeline mip make-ome --input-tif /inputs/file.qptiff --platform phenocycler --output-filepath /outputs/output.ome.tiff
 ```
 
+**NOTE** that while running segmentation you will need to pass the `DEEPCELL_ACCESS_TOKEN` to the docker container using the -e flag. `DEEPCELL_ACCESS_TOKEN` can be created at deepcells website https://users.deepcell.org/.
+
 ###### Example of ome.tiff cell segmentation with docker.
 
 ```bash
-docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -t estorrs/multiplex-imaging-pipeline mip segment-ome --input-tif /inputs/file.ome.tiff --output-prefix output
+docker run -v /path/to/input/dir:/inputs -v /path/to/output/dir:/outputs -e DEEPCELL_ACCESS_TOKEN="YOUR_ACCESS_TOKEN_HERE" -t estorrs/multiplex-imaging-pipeline mip segment-ome --input-tif /inputs/file.ome.tiff --output-prefix output
 ```
 
 
