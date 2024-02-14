@@ -18,7 +18,7 @@ from skimage.segmentation import find_boundaries
 
 
 CHANNEL_MAPPING = {
-    'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK', 'PanCK'],
+    'Pan-Cytokeratin': ['Pan-Cytokeratin', 'Pan-CK', 'PanCK', 'PanCytokeratin'],
     'E-cadherin': ['E-cadherin', 'E-Cadherin'],
     'CD45': ['CD45'],
     'CD45RO': ['CD45RO'],
@@ -42,6 +42,8 @@ CHANNEL_MAPPING = {
     'P21': ['P21'],
     'P16': ['P16'],
     'CK5': ['Keratin 5', 'KRT5', 'CK5'],
+    'CK7': ['CK7'],
+    'CK8/18': ['CK8/18'],
     'TFF1': ['TFF1'],
     'beta-integrin': ['beta-integrin', 'beta3-integrin'],
     'CK14': ['CK14', 'Keratin 14', 'KRT14'],
@@ -71,7 +73,7 @@ CHANNEL_MAPPING = {
     'IBA1': ['IBA1'],
     'OLIG2': ['OLIG2'],
     'FN1': ['FN1'],
-    'a-Amylase': ['a-Amylase'],
+    'a-Amylase': ['a-Amylase', 'Amylase (D', 'Amylase'],
     'Hep-Par-1': ['Hep-Par-1'],
     'Granzyme-B': ['Granzyme B', 'GZMB'],
     'TCF-1': ['TCF-1'],
@@ -86,10 +88,25 @@ CHANNEL_MAPPING = {
     'FGFR3': ['FGFR3'],
     'CD138': ['CD138'],
     'MLPH': ['MLPH'],
-    'P63': ['P63'],
+    'P63': ['P63', 'p63'],
     'GP2': ['GP2'],
     'COX2': ['COX2'],
-    'Lyve-1': ['Lyve-1'],
+    'Lyve-1': ['Lyve-1', 'LYVE1'],
+    'CCL2': ['CCL2'],
+    'MUC2': ['MUC2'],
+    'SOX9': ['SOX9'],
+    'STEAP4': ['STEAP4'],
+    'AR': ['AR'],
+    'AMACR': ['AMACR'],
+    'PGC': ['PGC', 'PGC (D)'],
+    'CFTR': ['CFTR (D)', 'CFTR'],
+    'REG3A': ['REG3A (D)', 'REG3A'],
+    'LAMC2': ['LAMC2 (D)', 'LAMC2'],
+    'INS': ['INS (D)', 'INS'],
+    'CRP': ['CRP (D)', 'CRP'],
+    'CD74': ['CD74 (D)', 'CD74'],
+    'MUC5AC': ['MUC5AC (D)', 'MUC5AC'],
+
 }
 R_CHANNEL_MAPPING = {v:k for k, vs in CHANNEL_MAPPING.items() for v in vs}
 
@@ -98,6 +115,7 @@ variants = ['(D)', ' (D)', '(d)', ' (d)', '-(D)', '-(d)', ' (Dnew)', '(Dnew)', '
 R_CHANNEL_MAPPING.update({k + variant:v
                           for k, v in R_CHANNEL_MAPPING.items()
                           for variant in variants})
+
     
 
 

@@ -45,6 +45,41 @@ def identity(c):
     return c
 
 
+def write_HTAN_ome(output_fp, data, ome_model, subresolutions=4):
+    import gc
+    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
+        opts = {
+            'compression': 'LZW',
+        }
+        logging.info(f'writting full res image')
+        out_tif.write(
+            rearrange(data, 'x y c z t -> t c y x z'),
+            subifds=subresolutions,
+            **opts
+        )
+        gc.collect()
+        for level in range(subresolutions):
+            mag = 2**(level + 1)
+            logging.info(f'writting subres {mag}')
+            x = rearrange(torch.tensor(data[..., 0, 0]), 'w h c -> c h w')
+            shape = (int(x.shape[-2] / mag), int(x.shape[-1] / mag))
+            sampled = rearrange(
+                TF.resize(x, shape, antialias=True),
+                'c h w -> w h c 1 1'
+            )
+            logging.info(f'subresolution shape: {shape}')
+            del(x)
+            gc.collect()
+            out_tif.write(
+                rearrange(sampled.numpy().astype(np.uint8), 'x y c z t -> t c y x z'),
+                subfiletype=1,
+                **opts
+            )
+            del(sampled)
+        xml_str = to_xml(ome_model)
+        out_tif.overwrite_description(xml_str.encode())
+
+
 def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_type='uint8', subresolutions=4):
     """
     Generate an HTAN compatible ome tiff from a list of filepaths, where each filepath is a tiff representing a different channel.
@@ -123,30 +158,7 @@ def generate_ome_from_tifs(fps, output_fp, platform='codex', bbox=None, pixel_ty
         im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
     im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
 
-    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
-        opts = {
-            'compression': 'LZW',
-        }
-        out_tif.write(
-            rearrange(data, 'x y c z t -> t c y x z'),
-            subifds=subresolutions,
-            **opts
-        )
-        for level in range(subresolutions):
-            mag = 2**(level + 1)
-            x = torch.tensor(rearrange(data[..., 0, 0], 'w h c -> c h w'))
-            sampled = rearrange(
-                TF.resize(x, (int(x.shape[-2] / mag), int(x.shape[-1] / mag)), antialias=True),
-                'c h w -> w h c 1 1'
-            )
-            sampled = sampled.numpy().astype(np.uint8)
-            out_tif.write(
-                rearrange(sampled, 'x y c z t -> t c y x z'),
-                subfiletype=1,
-                **opts
-            )
-        xml_str = to_xml(o)
-        out_tif.overwrite_description(xml_str.encode())
+    write_HTAN_ome(output_fp, data, o, subresolutions=subresolutions)
 
 
 def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8', subresolutions=4):
@@ -217,32 +229,7 @@ def generate_ome_from_qptiff(qptiff_fp, output_fp, bbox=None, pixel_type='uint8'
         im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
     im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
 
-    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
-        opts = {
-            'compression': 'LZW',
-        }
-        logging.info(f'writting full res image')
-        out_tif.write(
-            rearrange(data, 'x y c z t -> t c y x z'),
-            subifds=subresolutions,
-            **opts
-        )
-        for level in range(subresolutions):
-            mag = 2**(level + 1)
-            logging.info(f'writting subres {mag}')
-            x = torch.tensor(rearrange(data[..., 0, 0], 'w h c -> c h w'))
-            sampled = rearrange(
-                TF.resize(x, (int(x.shape[-2] / mag), int(x.shape[-1] / mag)), antialias=True),
-                'c h w -> w h c 1 1'
-            )
-            sampled = sampled.numpy().astype(np.uint8)
-            out_tif.write(
-                rearrange(sampled, 'x y c z t -> t c y x z'),
-                subfiletype=1,
-                **opts
-            )
-        xml_str = to_xml(o)
-        out_tif.overwrite_description(xml_str.encode())
+    write_HTAN_ome(output_fp, data, o, subresolutions=subresolutions)
 
 
 def generate_ome_from_codex_imagej_tif(tif_fp, output_fp, bbox=None, pixel_type='uint8', subresolutions=4):
@@ -318,32 +305,7 @@ def generate_ome_from_codex_imagej_tif(tif_fp, output_fp, bbox=None, pixel_type=
         im.pixels.planes.append(model.Plane(the_c=i, the_t=0, the_z=0))
     im.pixels.tiff_data_blocks.append(model.TiffData(plane_count=len(im.pixels.channels)))
 
-    with tifffile.TiffWriter(output_fp) as out_tif:
-        opts = {
-            'compression': 'LZW',
-        }
-        logging.info(f'writting full res image')
-        out_tif.write(
-            rearrange(data, 'x y c z t -> t c y x z'),
-            subifds=subresolutions,
-            **opts
-        )
-        for level in range(subresolutions):
-            mag = 2**(level + 1)
-            logging.info(f'writting subres {mag}')
-            x = torch.tensor(rearrange(data[..., 0, 0], 'w h c -> c h w'))
-            sampled = rearrange(
-                TF.resize(x, (int(x.shape[-2] / mag), int(x.shape[-1] / mag)), antialias=True),
-                'c h w -> w h c 1 1'
-            )
-            sampled = sampled.numpy().astype(np.uint8)
-            out_tif.write(
-                rearrange(sampled, 'x y c z t -> t c y x z'),
-                subfiletype=1,
-                **opts
-            )
-        xml_str = to_xml(o)
-        out_tif.overwrite_description(xml_str.encode())
+    write_HTAN_ome(output_fp, data, o, subresolutions=subresolutions)
 
 
 

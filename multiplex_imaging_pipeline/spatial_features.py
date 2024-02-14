@@ -138,16 +138,16 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     logging.info(f'extracting {seg_fp}')
     seg = tifffile.imread(seg_fp)
     if thresholds is not None:
-        thresholds = np.asarray([thresholds.get(c, 0.) for c in channels])
-        logging.info(f'thresholds detected: {list(zip(channels, thresholds))}')
+        thresholds_array = np.asarray([thresholds.get(c, 0.) for c in channels])
+        logging.info(f'thresholds detected: {list(zip(channels, thresholds_array))}')
 
     else:
         logging.info('thresholds not detected. auto-calculating.')
-        thresholds = np.asarray([auto_calculate_threshold(img) for img in imgs])
-        logging.info(f'thresholds: {list(zip(channels, thresholds))}')
+        thresholds_array = np.asarray([auto_calculate_threshold(img) for img in imgs])
+        logging.info(f'thresholds: {list(zip(channels, thresholds_array))}')
 
     masks = rearrange(
-        rearrange(imgs, 'c h w -> h w c') > thresholds,
+        rearrange(imgs, 'c h w -> h w c') > thresholds_array,
         'h w c -> c h w')
     
     props = regionprops(seg)
@@ -182,10 +182,15 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     cols = ['label', 'row', 'col', 'bbox-r1', 'bbox-c1', 'bbox-r2', 'bbox-c2', 'area']
     for c in channels:
         converted = utils.R_CHANNEL_MAPPING.get(c, c)
-        roots = ['fraction', 'intensity'] if thresholds is not None else ['intensity']
+        roots = ['fraction', 'intensity'] if thresholds_array is not None else ['intensity']
         for identifier in roots:
             cols.append(f'{converted}_{identifier}')
     df = pd.DataFrame(data=data, columns=cols)
+
+    # if using fraction and threshold==0 (i.e. not present), then remove from df so it doesn't effect cell type gating
+    present = [utils.R_CHANNEL_MAPPING.get(k, k) for k, v in thresholds.items() if v == 0]
+    to_remove = [f'{c}_fraction' for c in present]
+    df = df[[c for c in df.columns if c not in to_remove]]
 
     # scaled
     cols = [c for c in df.columns if '_intensity' in c]
