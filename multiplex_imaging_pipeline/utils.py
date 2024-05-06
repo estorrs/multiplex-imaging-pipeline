@@ -34,7 +34,7 @@ CHANNEL_MAPPING = {
     'CD68': ['CD68'],
     'CD163': ['CD163'],
     'FOXP3': ['FoxP3', 'FOXP3', 'Foxp3'],
-    'cKit': ['cKit', 'cKIT'],
+    'cKit': ['cKit', 'cKIT', 'ckit-(D)', 'ckit'],
     'MGP': ['MGP'],
     'CD36': ['CD36'],
     'PR': ['PR'],
@@ -49,12 +49,12 @@ CHANNEL_MAPPING = {
     'CK14': ['CK14', 'Keratin 14', 'KRT14'],
     'CK17': ['CK17', 'Keratin 17', 'CK17'],
     'CK19': ['CK19', 'Keratin 19', 'KRT19'],
-    'CD11b': ['CD11b', 'CD11B'],
+    'CD11b': ['CD11b', 'CD11B', 'cd11b'],
     'GATA3': ['GATA3'],
     'PLAT/tPA': ['PLAT/tPA', 'PLAT'],
-    'COX6c': ['COX6c'],
+    'COX6c': ['COX6c', 'COX6C (D)', 'COX6C'],
     'Her2': ['Her2', 'HER2'],
-    'Bap1': ['Bap1'],
+    'Bap1': ['Bap1', 'BAP1'],
     'GLUT1': ['Glut1', 'GLUT1'],
     'CD11c': ['CD11c'],
     'HLA-DR': ['HLA-DR', 'HLADR'],
@@ -74,7 +74,7 @@ CHANNEL_MAPPING = {
     'OLIG2': ['OLIG2'],
     'FN1': ['FN1'],
     'a-Amylase': ['a-Amylase', 'Amylase (D', 'Amylase'],
-    'Hep-Par-1': ['Hep-Par-1'],
+    'Hep-Par-1': ['Hep-Par-1', 'HepPar1-(D)', 'HepPar1'],
     'Granzyme-B': ['Granzyme B', 'GZMB'],
     'TCF-1': ['TCF-1'],
     'CD39': ['CD39'],
@@ -106,7 +106,14 @@ CHANNEL_MAPPING = {
     'CRP': ['CRP (D)', 'CRP'],
     'CD74': ['CD74 (D)', 'CD74'],
     'MUC5AC': ['MUC5AC (D)', 'MUC5AC'],
-
+    'AQP1': ['AQP1'],
+    'AQP2': ['Aqp2', 'AQP2'], 
+    'LRP2': ['LRP2'],
+    'UMOD': ['UMOD'],
+    'CALB1': ['CALB1'],
+    'CP': ['CP'],
+    'CA9': ['CA9'],
+    'UCHL1': ['UCHL1'],
 }
 R_CHANNEL_MAPPING = {v:k for k, vs in CHANNEL_MAPPING.items() for v in vs}
 
@@ -294,6 +301,9 @@ def merge_channels(channel_to_img, channels, thresh=.01, contrast_pct=95.):
     for c in channels:
         if c not in channel_to_img:
             print(f'warning: {c} not in image')
+            pass
+        elif channel_to_img[c].sum() == 0:
+            print(f'warning: {c} has no intensity')
             pass
         else:
             X = channel_to_img[c].copy().astype(np.float32)
