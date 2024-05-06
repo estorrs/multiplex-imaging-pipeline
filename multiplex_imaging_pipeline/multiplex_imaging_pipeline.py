@@ -149,7 +149,7 @@ def run_generate_spatial_features(labeled_fp, ome_fp, output_prefix='output',
         thresholds = None
 
     if gating_strategy_fp is not None:
-        gating_strategy = yaml.safeload(open(gating_strategy_fp))
+        gating_strategy = yaml.safe_load(open(gating_strategy_fp))
     else:
         gating_strategy = None
     
