@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md')) as f:
 setup(
     # $ pip install multiplex-imaging-pipeline
     name='multiplex-imaging-pipeline',
-    version='0.2.0',
+    version='0.2.1',
     description='A Python library for multiplex imaging analysis',
     long_description=long_description,
     long_description_content_type='text/markdown',
