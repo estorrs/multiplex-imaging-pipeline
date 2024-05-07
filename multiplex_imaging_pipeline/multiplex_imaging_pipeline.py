@@ -194,7 +194,7 @@ def main():
     elif args.mode == 'generate-spatial-features':
         run_generate_spatial_features(
             args.labeled_image, args.input_tif, output_prefix=args.output_prefix,
-            gating_strategy_fp=args.gating_strategy)
+            thresholds_fp=args.thresholds, gating_strategy_fp=args.gating_strategy)
     elif args.mode == 'generate-region-features':
         run_generate_region_features()
     elif args.mode == 'show-channels':
