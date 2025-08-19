@@ -47,7 +47,7 @@ def identity(c):
 
 def write_HTAN_ome(output_fp, data, ome_model, subresolutions=4):
     import gc
-    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
+    with tifffile.TiffWriter(output_fp, ome=False, bigtiff=True) as out_tif:
         opts = {
             'compression': 'LZW',
         }
