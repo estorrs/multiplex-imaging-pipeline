@@ -46,36 +46,24 @@ def identity(c):
 
 
 def write_HTAN_ome(output_fp, data, ome_model, subresolutions=4):
-    import gc
-    with tifffile.TiffWriter(output_fp, ome=False, bigtiff=True) as out_tif:
+    with tifffile.TiffWriter(output_fp, ome=True, bigtiff=True) as out_tif:
         opts = {
             'compression': 'LZW',
         }
         logging.info(f'writting full res image')
         out_tif.write(
-            rearrange(data, 'x y c z t -> t c y x z'),
+            rearrange(data[..., 0, 0], 'x y c -> c y x'),
             subifds=subresolutions,
             **opts
         )
-        gc.collect()
         for level in range(subresolutions):
             mag = 2**(level + 1)
             logging.info(f'writting subres {mag}')
-            x = rearrange(torch.tensor(data[..., 0, 0]), 'w h c -> c h w')
-            shape = (int(x.shape[-2] / mag), int(x.shape[-1] / mag))
-            sampled = rearrange(
-                TF.resize(x, shape, antialias=True),
-                'c h w -> w h c 1 1'
-            )
-            logging.info(f'subresolution shape: {shape}')
-            del(x)
-            gc.collect()
             out_tif.write(
-                rearrange(sampled.numpy().astype(np.uint8), 'x y c z t -> t c y x z'),
+                rearrange(data[::mag, ::mag, :, 0, 0], 'x y c -> c y x'),
                 subfiletype=1,
                 **opts
             )
-            del(sampled)
         xml_str = to_xml(ome_model)
         out_tif.overwrite_description(xml_str.encode())
 
