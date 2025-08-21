@@ -188,9 +188,12 @@ def generate_feature_table(ome_fp, seg_fp, thresholds=None):
     df = pd.DataFrame(data=data, columns=cols)
 
     # if using fraction and threshold==0 (i.e. not present), then remove from df so it doesn't effect cell type gating
-    present = [utils.R_CHANNEL_MAPPING.get(k, k) for k, v in thresholds.items() if v == 0]
-    to_remove = [f'{c}_fraction' for c in present]
-    df = df[[c for c in df.columns if c not in to_remove]]
+#    if thresholds is not None:
+#        present = [utils.R_CHANNEL_MAPPING.get(k, k) for k, v in thresholds.items() if v == 0]
+#    else:
+#        present = []
+#    to_remove = [f'{c}_fraction' for c in present]
+#    df = df[[c for c in df.columns if c not in to_remove]]
 
     # scaled
     cols = [c for c in df.columns if '_intensity' in c]
@@ -214,7 +217,7 @@ def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
     gating_strategy = DEFAULT_GATING_STRATEGY if gating_strategy is None else gating_strategy
     for d in gating_strategy:
         is_valid = cell_types=='Unlabeled'
-        mask = np.ones_like(cell_types, dtype=np.bool)
+        mask = np.ones_like(cell_types, dtype=bool)
         for strategy in d['strategy']:
             channel, val = strategy['channel'], strategy['value']
             if default_threshold is None:
@@ -228,9 +231,9 @@ def gate_cells(df, key=None, gating_strategy=None, default_threshold=None):
             x = df[f'{channel}_{key}'].to_list()[0] if f'{channel}_{key}' in df.columns else 0
             if pd.isnull(x) or f'{channel}_{key}' not in df.columns:
                 if len(d) == 1:
-                    m = np.ones_like(mask, dtype=np.bool)
+                    m = np.ones_like(mask, dtype=bool)
                 else:
-                    m = np.zeros_like(mask, dtype=np.bool)
+                    m = np.zeros_like(mask, dtype=bool)
             elif strategy['direction'] == 'pos': 
                 m = df[f'{channel}_{key}'] >= val
             else:
