@@ -22,7 +22,7 @@ To preform segmentation, [deepcell](https://github.com/vanvalenlab/deepcell-tf) 
 ```bash
 conda create -n multiplex-imaging-pipeline -c conda-forge python=3.9 gcc -y # install python and gcc
 conda activate multiplex-imaging-pipeline # activate conda environment
-pip install deepcell # install segmentation dependencies
+pip install deepcell git+https://github.com/estorrs/multiplex-imaging-pipeline.git
 ```
 
 Installing deepcell tends to throw errors on a lot of machines, if this is the case for you we provide a [docker](https://github.com/estorrs/multiplex-imaging-pipeline/tree/main#docker) image that can run all `multiplex-imaging-pipeline` functionality. See the docker section at the bottom of the page for details.
